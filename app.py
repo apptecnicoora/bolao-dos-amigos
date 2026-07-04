@@ -40,15 +40,23 @@ lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
     "🦈", "🐙", "🐉", "🚀", "🎮", "🥋", "🤠", "🤡", "👻", "👽", 
-    "😈", "🦖", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
+    "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
 ]
 
-# Dicionário de cores para o brilho das bandeiras
+# Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
     "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
     "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
     "México": "#006341", "Inglaterra": "#CF081F", "EUA": "#3C3B6E", "Bélgica": "#ED2939",
     "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
+}
+
+# Dicionário de emojis de bandeiras exclusivo para o bloco do WhatsApp
+bandeiras_emoji = {
+    "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
+    "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
+    "México": "🇲🇽", "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "EUA": "🇺🇸", "Bélgica": "🇧🇪",
+    "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
 }
 
 # Inicializar Conexão com o Google Sheets
@@ -67,7 +75,6 @@ df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "go
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# Lista completa de jogos atualizada com a nova imagem
 jogos_iniciais = [
     {"id": "J1", "time1": "Canadá", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
     {"id": "J2", "time1": "Paraguai", "flag1": "https://flagcdn.com/w160/py.png", "time2": "França", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
@@ -79,7 +86,6 @@ jogos_iniciais = [
     {"id": "J8", "time1": "Suíça", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Colômbia", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"}
 ]
 
-# Adicionar automaticamente jogos novos que não estejam na planilha
 ids_existentes = df_jogos_sheet["id"].tolist() if not df_jogos_sheet.empty else []
 novos_jogos = [j for j in jogos_iniciais if j["id"] not in ids_existentes]
 if novos_jogos:
@@ -107,7 +113,7 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING COM EFEITOS
+# ABA 1: RANKING
 with aba1:
     st.header("🏆 Classificação Geral")
     pontos_totais = {}
@@ -116,7 +122,6 @@ with aba1:
         nome = p["nome"]
         pontos_totais[nome] = pontos_totais.get(nome, 0)
         jogo = dict_jogos.get(p["jogo"])
-        # Correção aplicada aqui:
         if jogo and jogo["encerrado"]:
             pontos_totais[nome] += calcular_pontos(jogo, p)
             
@@ -129,7 +134,6 @@ with aba1:
             
         df_ranking = pd.DataFrame(dados_ranking).sort_values(by="Pontos", ascending=False).reset_index(drop=True)
         
-        # Renderização customizada para brilhar o Top 1
         st.markdown("<br>", unsafe_allow_html=True)
         for idx, row in df_ranking.iterrows():
             pos = idx + 1
@@ -139,7 +143,7 @@ with aba1:
                 st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b></div>", unsafe_allow_html=True)
         
         st.divider()
-        st.subheader("📲 Enviar para o WhatsApp")
+        st.subheader("📲 Enviar Placar Geral para o WhatsApp")
         texto_whatsapp = "🏆 *CLASSIFICAÇÃO DO BOLÃO* 🏆\n\n"
         for idx, row in df_ranking.iterrows():
             texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
@@ -147,7 +151,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES COM TRAVA DE REPETIÇÃO
+# ABA 2: PALPITES + GERADOR INDIVIDUAL WHATSAPP
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -173,7 +177,6 @@ with aba2:
             
             st.markdown(f'<h4 style="text-align: center;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
             
-            # Bandeiras com Brilho Neon Neon
             cor_t1 = cores_paises.get(j["time1"], "#ffffff")
             cor_t2 = cores_paises.get(j["time2"], "#ffffff")
             
@@ -195,10 +198,8 @@ with aba2:
                 passa = st.radio("Classifica:", [j['time1'], j['time2']], horizontal=True, key=f"passa_{id_jogo}_{nome_usuario}")
                 
             if st.button("Gravar Palpite", key=f"save_{id_jogo}"):
-                # Regra de Bloqueio de Placar Repetido
                 palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
                 
-                # Verifica se existe exatamente o mesmo placar
                 placar_ja_existe = False
                 dono_do_placar = ""
                 for _, palpite_antigo in palpites_deste_jogo.iterrows():
@@ -208,7 +209,7 @@ with aba2:
                         break
                 
                 if placar_ja_existe:
-                    st.error(f"❌ Opa! O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
+                    st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
                 else:
                     df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
                     novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa}])
@@ -216,10 +217,36 @@ with aba2:
                     conn.update(worksheet="Palpites", data=df_palpites)
                     st.success("Gravado com sucesso!")
             st.divider()
+            
+        # --- BLOCO EXCLUSIVO PARA COPIAR MEUS PALPITES PARA O WHATSAPP ---
+        palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
+        if not palpites_usuario.empty:
+            st.subheader("📲 Meus Palpites para o WhatsApp")
+            st.caption("Copie o texto abaixo para partilhar os seus palpites com o grupo:")
+            
+            texto_meus_palpites = f"📝 *MEUS PALPITES - OITAVAS* 📝\n"
+            texto_meus_palpites += f"👤 *Participante:* {avatar_escolhido} *{nome_usuario}*\n\n"
+            
+            for id_jogo, j in dict_jogos.items():
+                p_jogo = palpites_usuario[palpites_usuario["jogo"] == id_jogo]
+                f1 = bandeiras_emoji.get(j["time1"], "⚽")
+                f2 = bandeiras_emoji.get(j["time2"], "⚽")
+                if not p_jogo.empty:
+                    val_p1 = int(p_jogo.iloc[0]["p1"])
+                    val_p2 = int(p_jogo.iloc[0]["p2"])
+                    val_passa = p_jogo.iloc[0]["passa"]
+                    
+                    texto_meus_palpites += f"{f1} {j['time1']} {val_p1} x {val_p2} {j['time2']} {f2}"
+                    if val_p1 == val_p2 and val_passa:
+                        texto_meus_palpites += f" (Pênaltis: {val_passa})"
+                    texto_meus_palpites += "\n"
+            
+            texto_meus_palpites += "\n👉 *Deixe os seus palpites também pelo link!*"
+            st.code(texto_meus_palpites, language="text")
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
-# ABA 3: ADMIN E GERENCIAMENTO DE USUÁRIOS
+# ABA 3: ADMIN
 with aba3:
     st.header("⚙️ Painel Administrador")
     
