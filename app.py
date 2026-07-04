@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import base64
+import os
 
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
@@ -8,24 +10,10 @@ st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="cen
 # --- CSS CUSTOMIZADO: TEMA ESCURO COM NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
 st.markdown("""
 <style>
-    /* Forçar o fundo escuro clássico no aplicativo inteiro */
-    .stApp {
-        background-color: #0e1117 !important;
-        color: #ffffff !important;
-    }
+    .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
+    h1, h2, h3, h4, h5 { color: #009B3A !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
-    /* Títulos em Verde Brasil */
-    h1, h2, h3, h4, h5 {
-        color: #009B3A !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
-    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
-        color: #ffffff !important;
-    }
-    
-    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
         padding-top: 1rem; 
@@ -33,7 +21,6 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -43,7 +30,6 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
-    /* BOTÕES: Estilo Neon Brasil */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -60,7 +46,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
@@ -76,14 +61,10 @@ st.markdown("""
         border: 1px solid #30363d !important;
     }
     
-    /* Avatar gigante */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
-    
-    /* Abas de navegação superiores */
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
     .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
-    /* Efeito de brilho para o Top 1 no Ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -96,7 +77,6 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Estilo das linhas do ranking normal no modo escuro */
     .ranking-normal {
         background-color: #161a22;
         border-left: 5px solid #009B3A;
@@ -109,17 +89,16 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Estilo para a Imagem do Ronaldinho */
-    .imagem-ronaldinho {
+    .dancing-ronaldinho {
         display: block;
         margin-left: auto;
         margin-right: auto;
         width: 100%;
-        max-width: 320px;
+        max-width: 250px;
         height: auto;
         border-radius: 15px;
-        border: 3px solid #009B3A; /* Borda Verde */
-        box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7); /* Brilho Verde Neon */
+        border: 3px solid #FFDF00;
+        box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -127,7 +106,7 @@ st.markdown("""
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking com estilo Neon Brasil!")
 
-# Lista completa de avatares
+# Lista de avatares e cores (mantidas)
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
@@ -135,7 +114,6 @@ lista_avatares = [
     "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
 ]
 
-# Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
     "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
     "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
@@ -143,7 +121,6 @@ cores_paises = {
     "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
 }
 
-# Dicionário de emojis de bandeiras para o WhatsApp
 bandeiras_emoji = {
     "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
     "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
@@ -165,14 +142,13 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-# TRAVA ANTI-ERRO (KEYERROR): Se a coluna 'horário' não existir na planilha, nós a criamos aqui!
+# Trava Anti-Erro
 if "horário" not in df_jogos_sheet.columns:
     df_jogos_sheet["horário"] = ""
 
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# Lista completa de jogos originais com horários
 jogos_iniciais = [
     {"id": "J1", "time1": "Canadá", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
     {"id": "J2", "time1": "Paraguai", "flag1": "https://flagcdn.com/w160/py.png", "time2": "França", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
@@ -216,17 +192,29 @@ def calcular_pontos(jogo, palpite):
     except:
         return 0
 
+# FUNÇÃO PARA LER A IMAGEM LOCAL (BLINDADA CONTRA ERROS)
+def obter_imagem_local_base64(caminho_arquivo):
+    if os.path.exists(caminho_arquivo):
+        with open(caminho_arquivo, "rb") as arquivo_imagem:
+            return base64.b64encode(arquivo_imagem.read()).decode()
+    return None
+
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING E IMAGEM DO RONALDINHO
+# ABA 1: RANKING
 with aba1:
-    # Imagem estática robusta com o efeito Neon Verde
-    st.markdown("""
-    <div style='text-align: center;'>
-        <img src="https://s2.glbimg.com/Q281B94oUoIq7O_f7M-5Q4J1kU4=/0x0:2024x1401/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2020/P/z/k1UaM1RkymJb4U0pQ8BA/ronaldinho-gaucho-selecao-2006.jpg" 
-             class="imagem-ronaldinho" alt="Ronaldinho Gaúcho">
-    </div>
-    """, unsafe_allow_html=True)
+    # SISTEMA DEFINITIVO PARA CARREGAR O GIF LOCALMENTE
+    imagem_base64 = obter_imagem_local_base64("ronaldinho.gif")
+    
+    if imagem_base64:
+        st.markdown(f"""
+        <div style='text-align: center;'>
+            <img src="data:image/gif;base64,{imagem_base64}" class="dancing-ronaldinho" alt="Ronaldinho Dançando">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ O arquivo 'ronaldinho.gif' não foi encontrado. Por favor, suba um GIF com esse nome exato no seu GitHub.")
+        
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.header("🏆 Classificação Geral")
@@ -298,7 +286,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES + HORÁRIOS + GERADOR INDIVIDUAL WHATSAPP
+# ABA 2: PALPITES
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -391,7 +379,7 @@ with aba2:
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
-# ABA 3: ADMIN COM CORREÇÃO DE ERRO NO SALVAMENTO E TYPERERROR
+# ABA 3: ADMIN
 with aba3:
     st.header("⚙️ Painel Administrador")
     
@@ -429,7 +417,6 @@ with aba3:
             if submit_adm:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 
-                # Salvando coluna por coluna para evitar o TypeError no Pandas
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
