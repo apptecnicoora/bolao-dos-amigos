@@ -109,17 +109,17 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Estilo para o Ronaldinho Dançando */
-    .dancing-ronaldinho {
+    /* Estilo para a Imagem do Ronaldinho */
+    .imagem-ronaldinho {
         display: block;
         margin-left: auto;
         margin-right: auto;
         width: 100%;
-        max-width: 220px;
+        max-width: 320px;
         height: auto;
         border-radius: 15px;
-        border: 3px solid #FFDF00;
-        box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7);
+        border: 3px solid #009B3A; /* Borda Verde */
+        box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7); /* Brilho Verde Neon */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -218,14 +218,13 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING E RONALDINHO DANÇANDO
+# ABA 1: RANKING E IMAGEM DO RONALDINHO
 with aba1:
-    # Link direto da Giphy super estável + onerror para puxar do Tenor se o Giphy falhar
+    # Imagem estática robusta com o efeito Neon Verde
     st.markdown("""
     <div style='text-align: center;'>
-        <img src="https://media.giphy.com/media/8cErRl4M1KIiXpW3Fp/giphy.gif" 
-             onerror="this.onerror=null;this.src='https://c.tenor.com/71G1M4o03fMAAAAC/ronaldinho-ga%C3%BAcho-ronaldinho.gif';" 
-             class="dancing-ronaldinho" alt="Ronaldinho Samba">
+        <img src="https://s2.glbimg.com/Q281B94oUoIq7O_f7M-5Q4J1kU4=/0x0:2024x1401/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2020/P/z/k1UaM1RkymJb4U0pQ8BA/ronaldinho-gaucho-selecao-2006.jpg" 
+             class="imagem-ronaldinho" alt="Ronaldinho Gaúcho">
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
