@@ -5,58 +5,74 @@ from streamlit_gsheets import GSheetsConnection
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
 
-# --- CSS TEMA BRASIL ---
+# --- CSS CUSTOMIZADO: MODO ESCURO COM NEON BRASIL ---
 st.markdown("""
 <style>
-    /* Ajuste de largura da tela */
+    /* Forçar o fundo escuro clássico no aplicativo inteiro */
+    .stApp {
+        background-color: #0e1117 !important;
+        color: #ffffff !important;
+    }
+    
+    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
+        color: #ffffff !important;
+    }
+    
+    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
-        padding-top: 1rem; 
+        padding-top: 1.5rem; 
         padding-left: 0.8rem; 
         padding-right: 0.8rem; 
     }
     
-    /* Títulos em Verde Brasil */
-    h1, h2, h3, h4, h5 {
-        color: #009B3A !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil (Borda Verde e brilho Amarelo/Verde) */
+    [data-testid="stForm"] {
+        background-color: #161a22 !important;
+        border: 2px solid #009B3A !important;
+        border-radius: 16px !important;
+        box-shadow: 0 0 15px rgba(0, 155, 58, 0.6), inset 0 0 10px rgba(255, 223, 0, 0.2) !important;
+        padding: 20px !important;
+        margin-bottom: 25px !important;
     }
     
-    /* Botões Tema Brasil (Verde, Amarelo e Azul) */
+    /* BOTÕES: Estilo Neon Brasil (Fundo verde, texto amarelo e brilho ao tocar) */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
-        border: 2px solid #002776 !important;
-        font-weight: bold;
-        border-radius: 8px;
-        transition: 0.3s;
+        border: 2px solid #FFDF00 !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
+        box-shadow: 0 0 10px rgba(0, 155, 58, 0.5) !important;
+        transition: 0.3s !important;
     }
     .stButton > button:hover {
         background-color: #FFDF00 !important;
         color: #009B3A !important;
         border: 2px solid #009B3A !important;
+        box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* Cards de Formulário (Jogos) */
-    [data-testid="stForm"] {
-        background-color: #ffffff;
-        border: 2px solid #FFDF00;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0, 155, 58, 0.15);
-        margin-bottom: 20px;
+    /* Input de texto e números adaptados para o ambiente escuro */
+    input {
+        background-color: #202632 !important;
+        color: #ffffff !important;
+        border: 1px solid #30363d !important;
     }
-
-    /* Avatar gigante */
+    
+    /* Avatar gigante de seleção */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
     
-    /* Abas */
-    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; }
+    /* Abas de navegação superiores */
+    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
+    .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
-    /* Efeito de brilho para o Top 1 no Ranking (Degradê Verde/Azul com brilho Ouro) */
+    /* Efeito de destaque Ouro para o Top 1 do ranking */
     .top1-glow {
-        background: linear-gradient(145deg, #009B3A, #002776);
+        background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
-        box-shadow: 0 0 20px 5px rgba(255, 223, 0, 0.6);
+        box-shadow: 0 0 20px 5px rgba(255, 223, 0, 0.5);
         padding: 15px;
         border-radius: 12px;
         margin-bottom: 15px;
@@ -65,28 +81,29 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Ranking normal com faixas laterais verde e amarelo */
+    /* Estilo das linhas do ranking normal no modo escuro */
     .ranking-normal {
-        background-color: #ffffff;
-        border-left: 6px solid #009B3A;
-        border-right: 6px solid #FFDF00;
-        border-top: 1px solid #eee;
-        border-bottom: 1px solid #eee;
-        padding: 10px;
+        background-color: #161a22;
+        border-left: 5px solid #009B3A;
+        border-top: 1px solid #30363d;
+        border-bottom: 1px solid #30363d;
+        border-right: 1px solid #30363d;
+        padding: 12px;
         border-radius: 8px;
         margin-bottom: 8px;
-        color: #333;
+        color: #ffffff;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚽ Bolão das Oitavas")
+st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
+st.markdown("Acompanhe os resultados e dê seus palpites com estilo Neon Brasil!")
 
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
     "🦈", "🐙", "🐉", "🚀", "🎮", "🥋", "🤠", "🤡", "👻", "👽", 
-    "😈", "🦖", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻"
+    "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻"
 ]
 
 cores_paises = {
@@ -156,9 +173,9 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING
+# ABA 1: RANKING (VISUAL ESCURO ATUALIZADO)
 with aba1:
-    st.header("🏆 Classificação Geral")
+    st.header("📊 Classificação Geral")
     pontos_totais = {}
     
     for _, p in df_palpites.iterrows():
@@ -194,7 +211,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES OTIMIZADOS
+# ABA 2: PALPITES COM FORMULÁRIO NEON BRASIL
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -219,7 +236,7 @@ with aba2:
             if j["encerrado"]: continue
             
             with st.form(key=f"form_{id_jogo}"):
-                st.markdown(f'<h4 style="text-align: center; color: #002776 !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
+                st.markdown(f'<h4 style="text-align: center; color: #ffffff !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
                 
                 cor_t1 = cores_paises.get(j["time1"], "#009B3A")
                 cor_t2 = cores_paises.get(j["time2"], "#009B3A")
@@ -266,7 +283,8 @@ with aba2:
                             novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
                             df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                             conn.update(worksheet="Palpites", data=df_palpites)
-                            st.success("Gravado com sucesso no sistema!")
+                            st.success("Gravado com sucesso!")
+            st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
         if not palpites_usuario.empty:
