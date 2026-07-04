@@ -220,10 +220,12 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
 # ABA 1: RANKING E RONALDINHO DANÇANDO
 with aba1:
-    # Nova Imagem direta do Ronaldinho para não bugar no celular
+    # Link direto da Giphy super estável + onerror para puxar do Tenor se o Giphy falhar
     st.markdown("""
     <div style='text-align: center;'>
-        <img src="https://media1.tenor.com/m/71G1M4o03fMAAAAd/ronaldinho-ga%C3%BAcho-ronaldinho.gif" class="dancing-ronaldinho" alt="Ronaldinho Samba">
+        <img src="https://media.giphy.com/media/8cErRl4M1KIiXpW3Fp/giphy.gif" 
+             onerror="this.onerror=null;this.src='https://c.tenor.com/71G1M4o03fMAAAAC/ronaldinho-ga%C3%BAcho-ronaldinho.gif';" 
+             class="dancing-ronaldinho" alt="Ronaldinho Samba">
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
