@@ -116,7 +116,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
     try:
-        # Aumentei o TTL para 30 segundos. Reduz pela metade as chamadas ao Google.
         df = conn.read(worksheet=nome_aba, ttl=30)
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
@@ -171,7 +170,7 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING
+# ABA 1: RANKING E VISUALIZAÇÃO DE PALPITES
 with aba1:
     st.header("📊 Classificação Geral")
     pontos_totais = {}
@@ -206,10 +205,44 @@ with aba1:
         for idx, row in df_ranking.iterrows():
             texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
         st.code(texto_whatsapp, language="text")
+        
+        # --- NOVA SEÇÃO: VER PALPITES DOS ADVERSÁRIOS ---
+        st.divider()
+        st.subheader("👀 Ver e Copiar Palpites")
+        st.caption("Clique no nome do participante abaixo para ver ou copiar os palpites dele.")
+        
+        usuarios_com_palpite = df_palpites["nome"].unique()
+        for nome_participante in usuarios_com_palpite:
+            user_info = df_usuarios[df_usuarios["nome"] == nome_participante]
+            avatar_part = user_info["avatar"].values[0] if not user_info.empty else "👤"
+            
+            with st.expander(f"{avatar_part} {nome_participante}"):
+                palpites_do_cara = df_palpites[df_palpites["nome"] == nome_participante]
+                
+                texto_palpites = f"📝 *PALPITES - OITAVAS* 📝\n"
+                texto_palpites += f"👤 *Participante:* {avatar_part} *{nome_participante}*\n\n"
+                
+                for id_jogo, j in dict_jogos.items():
+                    p_jogo = palpites_do_cara[palpites_do_cara["jogo"] == id_jogo]
+                    f1 = bandeiras_emoji.get(j["time1"], "⚽")
+                    f2 = bandeiras_emoji.get(j["time2"], "⚽")
+                    
+                    if not p_jogo.empty:
+                        val_p1 = int(p_jogo.iloc[0]["p1"])
+                        val_p2 = int(p_jogo.iloc[0]["p2"])
+                        val_passa = p_jogo.iloc[0]["passa"]
+                        
+                        texto_palpites += f"{f1} {j['time1']} {val_p1} x {val_p2} {j['time2']} {f2}"
+                        if val_p1 == val_p2 and val_passa:
+                            texto_palpites += f" (Pênaltis: {val_passa})"
+                        texto_palpites += "\n"
+                
+                st.code(texto_palpites, language="text")
+                
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES OTIMIZADOS (SEM TRAVA DE REPETIÇÃO)
+# ABA 2: PALPITES OTIMIZADOS
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -265,13 +298,11 @@ with aba2:
                     elif p1 != p2 and passa != opcao_sem_penalti:
                         st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
                     else:
-                        # Removida a verificação de placar repetido para aliviar o sistema
                         df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
                         passa_final = passa if passa != opcao_sem_penalti else ""
                         novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
                         df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                         
-                        # Atualiza a planilha
                         conn.update(worksheet="Palpites", data=df_palpites)
                         st.cache_data.clear()
                         st.success("Gravado com sucesso no sistema!")
