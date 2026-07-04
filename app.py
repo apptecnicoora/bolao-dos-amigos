@@ -106,7 +106,7 @@ st.markdown("""
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking com estilo Neon Brasil!")
 
-# Lista de avatares e cores (mantidas)
+# Lista de avatares e cores
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
@@ -142,9 +142,14 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-# Trava Anti-Erro
+# TRAVA ANTI-ERRO (KEYERROR) PARA HORÁRIO
 if "horário" not in df_jogos_sheet.columns:
     df_jogos_sheet["horário"] = ""
+
+# TRAVA ANTI-ERRO (TYPEERROR) PARA O ADMIN
+# Isso avisa ao Pandas que essas colunas podem receber textos (strings), evitando o crash na hora de gravar os resultados.
+df_jogos_sheet["passa"] = df_jogos_sheet["passa"].astype(object)
+df_jogos_sheet["encerrado"] = df_jogos_sheet["encerrado"].astype(object)
 
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
@@ -192,7 +197,7 @@ def calcular_pontos(jogo, palpite):
     except:
         return 0
 
-# FUNÇÃO PARA LER A IMAGEM LOCAL (BLINDADA CONTRA ERROS)
+# FUNÇÃO PARA LER A IMAGEM LOCAL
 def obter_imagem_local_base64(caminho_arquivo):
     if os.path.exists(caminho_arquivo):
         with open(caminho_arquivo, "rb") as arquivo_imagem:
@@ -203,7 +208,7 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
 # ABA 1: RANKING
 with aba1:
-    # SISTEMA DEFINITIVO PARA CARREGAR O GIF LOCALMENTE
+    # Chama o arquivo local do GitHub (ronaldinho.gif)
     imagem_base64 = obter_imagem_local_base64("ronaldinho.gif")
     
     if imagem_base64:
