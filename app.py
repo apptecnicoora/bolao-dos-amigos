@@ -8,7 +8,6 @@ st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="cen
 # --- CSS CUSTOMIZADO: NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
 st.markdown("""
 <style>
-    /* Forçar o fundo escuro */
     .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
     h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
@@ -19,7 +18,6 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS NEON BRASIL */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -29,7 +27,6 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
-    /* BOTÕES NEON BRASIL */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -46,7 +43,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
@@ -120,8 +116,8 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
     try:
-        # AQUI ESTÁ A CORREÇÃO PRINCIPAL: ttl=15 reduz as requisições ao Google e evita travamentos
-        df = conn.read(worksheet=nome_aba, ttl=15)
+        # Aumentei o TTL para 30 segundos. Reduz pela metade as chamadas ao Google.
+        df = conn.read(worksheet=nome_aba, ttl=30)
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
         return df
@@ -155,8 +151,8 @@ for _, row in df_jogos_sheet.iterrows():
     dict_jogos[row["id"]] = {
         "time1": row["time1"], "flag1": row["flag1"],
         "time2": row["time2"], "flag2": row["flag2"],
-        "gols1": int(row["gols1"]) if not pd.isna(row["gols1"]) else 0, 
-        "gols2": int(row["gols2"]) if not pd.isna(row["gols2"]) else 0,
+        "gols1": int(row["gols1"]) if pd.notna(row["gols1"]) else 0, 
+        "gols2": int(row["gols2"]) if pd.notna(row["gols2"]) else 0,
         "passa": row["passa"], "encerrado": str(row["encerrado"]) == "Sim"
     }
 
@@ -213,7 +209,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES OTIMIZADOS
+# ABA 2: PALPITES OTIMIZADOS (SEM TRAVA DE REPETIÇÃO)
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -254,7 +250,6 @@ with aba2:
                     st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
                     
                 c1, c2 = st.columns(2)
-                # Os botões + e - foram ocultados via CSS. Agora é só tocar e digitar!
                 with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
                 with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
                     
@@ -270,28 +265,16 @@ with aba2:
                     elif p1 != p2 and passa != opcao_sem_penalti:
                         st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
                     else:
-                        palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
+                        # Removida a verificação de placar repetido para aliviar o sistema
+                        df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
+                        passa_final = passa if passa != opcao_sem_penalti else ""
+                        novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
+                        df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                         
-                        placar_ja_existe = False
-                        dono_do_placar = ""
-                        for _, palpite_antigo in palpites_deste_jogo.iterrows():
-                            if int(palpite_antigo["p1"]) == p1 and int(palpite_antigo["p2"]) == p2:
-                                placar_ja_existe = True
-                                dono_do_placar = palpite_antigo["nome"]
-                                break
-                        
-                        if placar_ja_existe:
-                            st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
-                        else:
-                            df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
-                            passa_final = passa if passa != opcao_sem_penalti else ""
-                            novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
-                            df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
-                            
-                            # Atualiza a planilha e limpa o cache imediatamente para garantir sucesso
-                            conn.update(worksheet="Palpites", data=df_palpites)
-                            st.cache_data.clear()
-                            st.success("Gravado com sucesso no sistema!")
+                        # Atualiza a planilha
+                        conn.update(worksheet="Palpites", data=df_palpites)
+                        st.cache_data.clear()
+                        st.success("Gravado com sucesso no sistema!")
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
