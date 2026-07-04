@@ -5,15 +5,58 @@ from streamlit_gsheets import GSheetsConnection
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
 
+# --- CSS TEMA BRASIL ---
 st.markdown("""
 <style>
-    .main .block-container { max-width: 480px; padding-top: 1rem; padding-left: 0.8rem; padding-right: 0.8rem; }
+    /* Ajuste de largura da tela */
+    .main .block-container { 
+        max-width: 480px; 
+        padding-top: 1rem; 
+        padding-left: 0.8rem; 
+        padding-right: 0.8rem; 
+    }
+    
+    /* Títulos em Verde Brasil */
+    h1, h2, h3, h4, h5 {
+        color: #009B3A !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    /* Botões Tema Brasil (Verde, Amarelo e Azul) */
+    .stButton > button {
+        background-color: #009B3A !important;
+        color: #FFDF00 !important;
+        border: 2px solid #002776 !important;
+        font-weight: bold;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+    .stButton > button:hover {
+        background-color: #FFDF00 !important;
+        color: #009B3A !important;
+        border: 2px solid #009B3A !important;
+    }
+
+    /* Cards de Formulário (Jogos) */
+    [data-testid="stForm"] {
+        background-color: #ffffff;
+        border: 2px solid #FFDF00;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 155, 58, 0.15);
+        margin-bottom: 20px;
+    }
+
+    /* Avatar gigante */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
+    
+    /* Abas */
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; }
+    
+    /* Efeito de brilho para o Top 1 no Ranking (Degradê Verde/Azul com brilho Ouro) */
     .top1-glow {
-        background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-        border: 2px solid #FFD700;
-        box-shadow: 0 0 20px 5px rgba(255, 215, 0, 0.4);
+        background: linear-gradient(145deg, #009B3A, #002776);
+        border: 2px solid #FFDF00;
+        box-shadow: 0 0 20px 5px rgba(255, 223, 0, 0.6);
         padding: 15px;
         border-radius: 12px;
         margin-bottom: 15px;
@@ -21,9 +64,14 @@ st.markdown("""
         text-align: center;
         font-size: 1.2rem;
     }
+    
+    /* Ranking normal com faixas laterais verde e amarelo */
     .ranking-normal {
-        background-color: #f8f9fa;
-        border: 1px solid #ddd;
+        background-color: #ffffff;
+        border-left: 6px solid #009B3A;
+        border-right: 6px solid #FFDF00;
+        border-top: 1px solid #eee;
+        border-bottom: 1px solid #eee;
         padding: 10px;
         border-radius: 8px;
         margin-bottom: 8px;
@@ -146,7 +194,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES OTIMIZADOS (SEM LENTIDÃO)
+# ABA 2: PALPITES OTIMIZADOS
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -170,12 +218,11 @@ with aba2:
         for id_jogo, j in dict_jogos.items():
             if j["encerrado"]: continue
             
-            # Utilizando st.form para evitar que o site recarregue a cada clique no placar
             with st.form(key=f"form_{id_jogo}"):
-                st.markdown(f'<h4 style="text-align: center;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
+                st.markdown(f'<h4 style="text-align: center; color: #002776 !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
                 
-                cor_t1 = cores_paises.get(j["time1"], "#ffffff")
-                cor_t2 = cores_paises.get(j["time2"], "#ffffff")
+                cor_t1 = cores_paises.get(j["time1"], "#009B3A")
+                cor_t2 = cores_paises.get(j["time2"], "#009B3A")
                 
                 col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
                 with col_t1: 
@@ -196,7 +243,6 @@ with aba2:
                 submit_palpite = st.form_submit_button("Gravar Palpite", type="primary", use_container_width=True)
                 
                 if submit_palpite:
-                    # Validação inteligente de Pênaltis
                     if p1 == p2 and passa == opcao_sem_penalti:
                         st.error("⚠️ Você colocou um empate! Escolha quem vence nos pênaltis antes de gravar.")
                     elif p1 != p2 and passa != opcao_sem_penalti:
@@ -221,9 +267,7 @@ with aba2:
                             df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                             conn.update(worksheet="Palpites", data=df_palpites)
                             st.success("Gravado com sucesso no sistema!")
-            st.markdown("<br>", unsafe_allow_html=True)
             
-        # BLOCO EXCLUSIVO PARA COPIAR PALPITES
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
         if not palpites_usuario.empty:
             st.subheader("📲 Meus Palpites para o WhatsApp")
