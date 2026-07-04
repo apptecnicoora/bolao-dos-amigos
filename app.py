@@ -109,15 +109,16 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Estilo para o boneco dançando */
-    .dancing-man {
+    /* Estilo para o Ronaldinho Dançando */
+    .dancing-ronaldinho {
         display: block;
         margin-left: auto;
         margin-right: auto;
         width: 100%;
-        max-width: 180px;
+        max-width: 220px;
         height: auto;
-        border-radius: 50%;
+        border-radius: 15px;
+        border: 3px solid #FFDF00;
         box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7);
     }
 </style>
@@ -136,18 +137,18 @@ lista_avatares = [
 
 # Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
-    "Time A": "#ffffff", "Time B": "#ffffff", "Time C": "#ffffff", "Time D": "#ffffff",
-    "Time E": "#ffffff", "Time F": "#ffffff", "Time G": "#ffffff", "Time H": "#ffffff",
-    "Time I": "#ffffff", "Time J": "#ffffff", "Time K": "#ffffff", "Time L": "#ffffff",
-    "Time M": "#ffffff", "Time N": "#ffffff", "Time O": "#ffffff", "Time P": "#ffffff"
+    "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
+    "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
+    "México": "#006341", "Inglaterra": "#CF081F", "EUA": "#3C3B6E", "Bélgica": "#ED2939",
+    "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
 }
 
 # Dicionário de emojis de bandeiras para o WhatsApp
 bandeiras_emoji = {
-    "Time A": "⚽", "Time B": "⚽", "Time C": "⚽", "Time D": "⚽",
-    "Time E": "⚽", "Time F": "⚽", "Time G": "⚽", "Time H": "⚽",
-    "Time I": "⚽", "Time J": "⚽", "Time K": "⚽", "Time L": "⚽",
-    "Time M": "⚽", "Time N": "⚽", "Time O": "⚽", "Time P": "⚽"
+    "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
+    "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
+    "México": "🇲🇽", "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "EUA": "🇺🇸", "Bélgica": "🇧🇪",
+    "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
 }
 
 # Inicializar Conexão com o Google Sheets
@@ -171,16 +172,16 @@ if "horário" not in df_jogos_sheet.columns:
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# Lista completa de jogos com horários
+# Lista completa de jogos originais com horários
 jogos_iniciais = [
-    {"id": "J1", "time1": "Time A", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Time B", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
-    {"id": "J2", "time1": "Time C", "flag1": "https://flagcdn.com/w160/py.png", "time2": "Time D", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
-    {"id": "J3", "time1": "Time E", "flag1": "https://flagcdn.com/w160/br.png", "time2": "Time F", "flag2": "https://flagcdn.com/w160/no.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 17:00"},
-    {"id": "J4", "time1": "Time G", "flag1": "https://flagcdn.com/w160/mx.png", "time2": "Time H", "flag2": "https://flagcdn.com/w160/gb-eng.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 21:00"},
-    {"id": "J5", "time1": "Time I", "flag1": "https://flagcdn.com/w160/pt.png", "time2": "Time J", "flag2": "https://flagcdn.com/w160/es.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 16:00"},
-    {"id": "J6", "time1": "Time K", "flag1": "https://flagcdn.com/w160/us.png", "time2": "Time L", "flag2": "https://flagcdn.com/w160/be.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 21:00"},
-    {"id": "J7", "time1": "Time M", "flag1": "https://flagcdn.com/w160/ar.png", "time2": "Time N", "flag2": "https://flagcdn.com/w160/eg.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 13:00"},
-    {"id": "J8", "time1": "Time O", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Time P", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 17:00"}
+    {"id": "J1", "time1": "Canadá", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
+    {"id": "J2", "time1": "Paraguai", "flag1": "https://flagcdn.com/w160/py.png", "time2": "França", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
+    {"id": "J3", "time1": "Brasil", "flag1": "https://flagcdn.com/w160/br.png", "time2": "Noruega", "flag2": "https://flagcdn.com/w160/no.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 17:00"},
+    {"id": "J4", "time1": "México", "flag1": "https://flagcdn.com/w160/mx.png", "time2": "Inglaterra", "flag2": "https://flagcdn.com/w160/gb-eng.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 21:00"},
+    {"id": "J5", "time1": "Portugal", "flag1": "https://flagcdn.com/w160/pt.png", "time2": "Espanha", "flag2": "https://flagcdn.com/w160/es.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 16:00"},
+    {"id": "J6", "time1": "EUA", "flag1": "https://flagcdn.com/w160/us.png", "time2": "Bélgica", "flag2": "https://flagcdn.com/w160/be.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 21:00"},
+    {"id": "J7", "time1": "Argentina", "flag1": "https://flagcdn.com/w160/ar.png", "time2": "Egito", "flag2": "https://flagcdn.com/w160/eg.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 13:00"},
+    {"id": "J8", "time1": "Suíça", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Colômbia", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 17:00"}
 ]
 
 ids_existentes = df_jogos_sheet["id"].tolist() if not df_jogos_sheet.empty else []
@@ -217,11 +218,12 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING E BONECO DANÇANDO
+# ABA 1: RANKING E RONALDINHO DANÇANDO
 with aba1:
+    # Nova Imagem direta do Ronaldinho para não bugar no celular
     st.markdown("""
     <div style='text-align: center;'>
-        <img src="https://i.giphy.com/media/blSTtZehjAZ8I/giphy.gif" class="dancing-man" alt="Boneco Dançando">
+        <img src="https://media1.tenor.com/m/71G1M4o03fMAAAAd/ronaldinho-ga%C3%BAcho-ronaldinho.gif" class="dancing-ronaldinho" alt="Ronaldinho Samba">
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -325,8 +327,8 @@ with aba2:
                 st.markdown(f'<h4 style="text-align: center; color: #ffffff !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
                 st.markdown(f'<p style="text-align: center; color: #8b949e !important; font-size: 0.9rem; margin-top: -15px;">{j["horário"]}</p>', unsafe_allow_html=True)
                 
-                cor_t1 = cores_paises.get(j["time1"], "#ffffff")
-                cor_t2 = cores_paises.get(j["time2"], "#ffffff")
+                cor_t1 = cores_paises.get(j["time1"], "#009B3A")
+                cor_t2 = cores_paises.get(j["time2"], "#009B3A")
                 
                 col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
                 with col_t1: 
@@ -388,7 +390,7 @@ with aba2:
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
-# ABA 3: ADMIN COM CORREÇÃO DE ERRO NO SALVAMENTO
+# ABA 3: ADMIN COM CORREÇÃO DE ERRO NO SALVAMENTO E TYPERERROR
 with aba3:
     st.header("⚙️ Painel Administrador")
     
@@ -426,6 +428,7 @@ with aba3:
             if submit_adm:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 
+                # Salvando coluna por coluna para evitar o TypeError no Pandas
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
