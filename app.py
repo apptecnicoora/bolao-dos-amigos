@@ -5,21 +5,13 @@ from streamlit_gsheets import GSheetsConnection
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
 
-# --- CSS CUSTOMIZADO: MODO ESCURO COM NEON BRASIL ---
+# --- CSS CUSTOMIZADO: NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
 st.markdown("""
 <style>
-    /* Forçar o fundo escuro clássico no aplicativo inteiro */
-    .stApp {
-        background-color: #0e1117 !important;
-        color: #ffffff !important;
-    }
+    /* Forçar o fundo escuro */
+    .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
-    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
-    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
-        color: #ffffff !important;
-    }
-    
-    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
         padding-top: 1.5rem; 
@@ -27,7 +19,7 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil (Borda Verde e brilho Amarelo/Verde) */
+    /* CARDS NEON BRASIL */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -37,7 +29,7 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
-    /* BOTÕES: Estilo Neon Brasil (Fundo verde, texto amarelo e brilho ao tocar) */
+    /* BOTÕES NEON BRASIL */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -54,21 +46,26 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* Input de texto e números adaptados para o ambiente escuro */
-    input {
+    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
+    input[type=number] {
+        -moz-appearance: textfield;
+        text-align: center !important;
+        font-size: 1.2rem !important;
+        font-weight: bold !important;
         background-color: #202632 !important;
         color: #ffffff !important;
         border: 1px solid #30363d !important;
     }
     
-    /* Avatar gigante de seleção */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
-    
-    /* Abas de navegação superiores */
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
     .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
-    /* Efeito de destaque Ouro para o Top 1 do ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -81,7 +78,6 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Estilo das linhas do ranking normal no modo escuro */
     .ranking-normal {
         background-color: #161a22;
         border-left: 5px solid #009B3A;
@@ -96,8 +92,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
-st.markdown("Acompanhe os resultados e dê seus palpites com estilo Neon Brasil!")
+st.title("⚽ BOLÃO ONLINE DAS OITAVAS")
+st.markdown("Digite os seus palpites, grave e acompanhe o Ranking com estilo Neon Brasil!")
 
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
@@ -124,7 +120,8 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
     try:
-        df = conn.read(worksheet=nome_aba, ttl=0)
+        # AQUI ESTÁ A CORREÇÃO PRINCIPAL: ttl=15 reduz as requisições ao Google e evita travamentos
+        df = conn.read(worksheet=nome_aba, ttl=15)
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
         return df
@@ -151,29 +148,34 @@ novos_jogos = [j for j in jogos_iniciais if j["id"] not in ids_existentes]
 if novos_jogos:
     df_jogos_sheet = pd.concat([df_jogos_sheet, pd.DataFrame(novos_jogos)], ignore_index=True)
     conn.update(worksheet="Jogos", data=df_jogos_sheet)
+    st.cache_data.clear()
 
 dict_jogos = {}
 for _, row in df_jogos_sheet.iterrows():
     dict_jogos[row["id"]] = {
         "time1": row["time1"], "flag1": row["flag1"],
         "time2": row["time2"], "flag2": row["flag2"],
-        "gols1": int(row["gols1"]), "gols2": int(row["gols2"]),
+        "gols1": int(row["gols1"]) if not pd.isna(row["gols1"]) else 0, 
+        "gols2": int(row["gols2"]) if not pd.isna(row["gols2"]) else 0,
         "passa": row["passa"], "encerrado": str(row["encerrado"]) == "Sim"
     }
 
 def calcular_pontos(jogo, palpite):
-    p1, p2, p_passa = int(palpite["p1"]), int(palpite["p2"]), palpite["passa"]
-    r1, r2, r_passa = jogo["gols1"], jogo["gols2"], jogo["passa"]
-    if p1 == r1 and p2 == r2:
-        if r1 == r2: return 5 if p_passa == r_passa else 3
-        return 5
-    elif (p1 > p2 and r1 > r2) or (p1 < p2 and r1 < r2) or (p1 == p2 and r1 == r2):
-        return 2
-    return 0
+    try:
+        p1, p2, p_passa = int(palpite["p1"]), int(palpite["p2"]), palpite["passa"]
+        r1, r2, r_passa = jogo["gols1"], jogo["gols2"], jogo["passa"]
+        if p1 == r1 and p2 == r2:
+            if r1 == r2: return 5 if p_passa == r_passa else 3
+            return 5
+        elif (p1 > p2 and r1 > r2) or (p1 < p2 and r1 < r2) or (p1 == p2 and r1 == r2):
+            return 2
+        return 0
+    except:
+        return 0
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING (VISUAL ESCURO ATUALIZADO)
+# ABA 1: RANKING
 with aba1:
     st.header("📊 Classificação Geral")
     pontos_totais = {}
@@ -211,7 +213,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES COM FORMULÁRIO NEON BRASIL
+# ABA 2: PALPITES OTIMIZADOS
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -225,9 +227,11 @@ with aba2:
             nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
             df_usuarios = pd.concat([df_usuarios, nova_linha], ignore_index=True)
             conn.update(worksheet="Usuarios", data=df_usuarios)
+            st.cache_data.clear()
         elif avatar_atual != avatar_escolhido:
             df_usuarios.loc[df_usuarios["nome"] == nome_usuario, "avatar"] = avatar_escolhido
             conn.update(worksheet="Usuarios", data=df_usuarios)
+            st.cache_data.clear()
             
         st.markdown(f'<div class="avatar-grande-display">{avatar_escolhido}</div>', unsafe_allow_html=True)
         st.divider()
@@ -250,6 +254,7 @@ with aba2:
                     st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
                     
                 c1, c2 = st.columns(2)
+                # Os botões + e - foram ocultados via CSS. Agora é só tocar e digitar!
                 with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
                 with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
                     
@@ -282,8 +287,11 @@ with aba2:
                             passa_final = passa if passa != opcao_sem_penalti else ""
                             novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
                             df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
+                            
+                            # Atualiza a planilha e limpa o cache imediatamente para garantir sucesso
                             conn.update(worksheet="Palpites", data=df_palpites)
-                            st.success("Gravado com sucesso!")
+                            st.cache_data.clear()
+                            st.success("Gravado com sucesso no sistema!")
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
@@ -325,6 +333,7 @@ with aba3:
             df_palpites = df_palpites[df_palpites["nome"] != usuario_remover]
             conn.update(worksheet="Usuarios", data=df_usuarios)
             conn.update(worksheet="Palpites", data=df_palpites)
+            st.cache_data.clear()
             st.success(f"Usuário {usuario_remover} removido com sucesso!")
             st.rerun()
         
@@ -350,4 +359,5 @@ with aba3:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, ["gols1", "gols2", "passa", "encerrado"]] = [g1, g2, passa_final_adm, "Sim" if encerrar else "Não"]
                 conn.update(worksheet="Jogos", data=df_jogos_sheet)
+                st.cache_data.clear()
                 st.success("Placar atualizado!")
