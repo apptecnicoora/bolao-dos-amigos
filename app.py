@@ -10,7 +10,6 @@ st.markdown("""
     .main .block-container { max-width: 480px; padding-top: 1rem; padding-left: 0.8rem; padding-right: 0.8rem; }
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; }
-    /* Efeito de brilho para o Top 1 no Ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
         border: 2px solid #FFD700;
@@ -35,15 +34,13 @@ st.markdown("""
 
 st.title("⚽ Bolão das Oitavas")
 
-# Super lista de avatares
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
     "🦈", "🐙", "🐉", "🚀", "🎮", "🥋", "🤠", "🤡", "👻", "👽", 
-    "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
+    "😈", "🦖", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻"
 ]
 
-# Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
     "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
     "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
@@ -51,7 +48,6 @@ cores_paises = {
     "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
 }
 
-# Dicionário de emojis de bandeiras exclusivo para o bloco do WhatsApp
 bandeiras_emoji = {
     "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
     "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
@@ -59,7 +55,6 @@ bandeiras_emoji = {
     "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
 }
 
-# Inicializar Conexão com o Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
@@ -143,7 +138,7 @@ with aba1:
                 st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b></div>", unsafe_allow_html=True)
         
         st.divider()
-        st.subheader("📲 Enviar Placar Geral para o WhatsApp")
+        st.subheader("📲 Enviar Placar para o WhatsApp")
         texto_whatsapp = "🏆 *CLASSIFICAÇÃO DO BOLÃO* 🏆\n\n"
         for idx, row in df_ranking.iterrows():
             texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
@@ -151,7 +146,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES + GERADOR INDIVIDUAL WHATSAPP
+# ABA 2: PALPITES OTIMIZADOS (SEM LENTIDÃO)
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -175,54 +170,63 @@ with aba2:
         for id_jogo, j in dict_jogos.items():
             if j["encerrado"]: continue
             
-            st.markdown(f'<h4 style="text-align: center;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
+            # Utilizando st.form para evitar que o site recarregue a cada clique no placar
+            with st.form(key=f"form_{id_jogo}"):
+                st.markdown(f'<h4 style="text-align: center;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
+                
+                cor_t1 = cores_paises.get(j["time1"], "#ffffff")
+                cor_t2 = cores_paises.get(j["time2"], "#ffffff")
+                
+                col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
+                with col_t1: 
+                    st.markdown(f"<div style='text-align: right;'><img src='{j['flag1']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t1};'></div>", unsafe_allow_html=True)
+                with col_vs: 
+                    st.markdown("<h3 style='text-align: center; margin-top: 15px;'>VS</h3>", unsafe_allow_html=True)
+                with col_t2: 
+                    st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
+                    
+                c1, c2 = st.columns(2)
+                with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
+                with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
+                    
+                st.caption("Pênaltis (Marque apenas se o seu placar for um empate):")
+                opcao_sem_penalti = "Sem Pênaltis (Não empatou)"
+                passa = st.selectbox("", [opcao_sem_penalti, j['time1'], j['time2']], label_visibility="collapsed")
+                    
+                submit_palpite = st.form_submit_button("Gravar Palpite", type="primary", use_container_width=True)
+                
+                if submit_palpite:
+                    # Validação inteligente de Pênaltis
+                    if p1 == p2 and passa == opcao_sem_penalti:
+                        st.error("⚠️ Você colocou um empate! Escolha quem vence nos pênaltis antes de gravar.")
+                    elif p1 != p2 and passa != opcao_sem_penalti:
+                        st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
+                    else:
+                        palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
+                        
+                        placar_ja_existe = False
+                        dono_do_placar = ""
+                        for _, palpite_antigo in palpites_deste_jogo.iterrows():
+                            if int(palpite_antigo["p1"]) == p1 and int(palpite_antigo["p2"]) == p2:
+                                placar_ja_existe = True
+                                dono_do_placar = palpite_antigo["nome"]
+                                break
+                        
+                        if placar_ja_existe:
+                            st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
+                        else:
+                            df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
+                            passa_final = passa if passa != opcao_sem_penalti else ""
+                            novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
+                            df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
+                            conn.update(worksheet="Palpites", data=df_palpites)
+                            st.success("Gravado com sucesso no sistema!")
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            cor_t1 = cores_paises.get(j["time1"], "#ffffff")
-            cor_t2 = cores_paises.get(j["time2"], "#ffffff")
-            
-            col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
-            with col_t1: 
-                st.markdown(f"<div style='text-align: right;'><img src='{j['flag1']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t1};'></div>", unsafe_allow_html=True)
-            with col_vs: 
-                st.markdown("<h3 style='text-align: center; margin-top: 15px;'>VS</h3>", unsafe_allow_html=True)
-            with col_t2: 
-                st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
-                
-            c1, c2 = st.columns(2)
-            with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1, key=f"p1_{id_jogo}_{nome_usuario}")
-            with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1, key=f"p2_{id_jogo}_{nome_usuario}")
-                
-            passa = ""
-            if p1 == p2:
-                st.caption("Empate! Quem avança nos Pênaltis?")
-                passa = st.radio("Classifica:", [j['time1'], j['time2']], horizontal=True, key=f"passa_{id_jogo}_{nome_usuario}")
-                
-            if st.button("Gravar Palpite", key=f"save_{id_jogo}"):
-                palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
-                
-                placar_ja_existe = False
-                dono_do_placar = ""
-                for _, palpite_antigo in palpites_deste_jogo.iterrows():
-                    if int(palpite_antigo["p1"]) == p1 and int(palpite_antigo["p2"]) == p2:
-                        placar_ja_existe = True
-                        dono_do_placar = palpite_antigo["nome"]
-                        break
-                
-                if placar_ja_existe:
-                    st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
-                else:
-                    df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
-                    novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa}])
-                    df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
-                    conn.update(worksheet="Palpites", data=df_palpites)
-                    st.success("Gravado com sucesso!")
-            st.divider()
-            
-        # --- BLOCO EXCLUSIVO PARA COPIAR MEUS PALPITES PARA O WHATSAPP ---
+        # BLOCO EXCLUSIVO PARA COPIAR PALPITES
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
         if not palpites_usuario.empty:
             st.subheader("📲 Meus Palpites para o WhatsApp")
-            st.caption("Copie o texto abaixo para partilhar os seus palpites com o grupo:")
             
             texto_meus_palpites = f"📝 *MEUS PALPITES - OITAVAS* 📝\n"
             texto_meus_palpites += f"👤 *Participante:* {avatar_escolhido} *{nome_usuario}*\n\n"
@@ -261,26 +265,27 @@ with aba3:
             conn.update(worksheet="Palpites", data=df_palpites)
             st.success(f"Usuário {usuario_remover} removido com sucesso!")
             st.rerun()
-    else:
-        st.info("Nenhum usuário cadastrado ainda.")
         
     st.divider()
     
     st.subheader("📝 Lançar Resultados Reais")
     for id_jogo, j in dict_jogos.items():
-        st.markdown(f"**{j['time1']} x {j['time2']}**")
-        c1, c2 = st.columns(2)
-        with c1: g1 = st.number_input(f"Gols Reais {j['time1']}", min_value=0, step=1, value=j["gols1"], key=f"adm_g1_{id_jogo}")
-        with c2: g2 = st.number_input(f"Gols Reais {j['time2']}", min_value=0, step=1, value=j["gols2"], key=f"adm_g2_{id_jogo}")
+        with st.form(key=f"adm_form_{id_jogo}"):
+            st.markdown(f"**{j['time1']} x {j['time2']}**")
+            c1, c2 = st.columns(2)
+            with c1: g1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1, value=j["gols1"])
+            with c2: g2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1, value=j["gols2"])
+                
+            opcao_sem_penalti_adm = "Sem Pênaltis"
+            st.caption("Pênaltis:")
+            passa_real = st.selectbox("", [opcao_sem_penalti_adm, j['time1'], j['time2']], label_visibility="collapsed")
+                
+            encerrar = st.checkbox("Encerrar jogo e travar palpites", value=j["encerrado"])
             
-        passa_real = ""
-        if g1 == g2:
-            passa_real = st.radio("Vencedor nos Pênaltis:", [j['time1'], j['time2']], horizontal=True, key=f"adm_passa_{id_jogo}")
+            submit_adm = st.form_submit_button("Gravar Placar Oficial", use_container_width=True)
             
-        encerrar = st.checkbox("Encerrar jogo e travar palpites", value=j["encerrado"], key=f"adm_enc_{id_jogo}")
-        
-        if st.button("Gravar Placar Oficial", key=f"adm_btn_{id_jogo}"):
-            df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, ["gols1", "gols2", "passa", "encerrado"]] = [g1, g2, passa_real, "Sim" if encerrar else "Não"]
-            conn.update(worksheet="Jogos", data=df_jogos_sheet)
-            st.success("Planilha atualizada e pontos consolidados!")
-        st.divider()
+            if submit_adm:
+                passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
+                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, ["gols1", "gols2", "passa", "encerrado"]] = [g1, g2, passa_final_adm, "Sim" if encerrar else "Não"]
+                conn.update(worksheet="Jogos", data=df_jogos_sheet)
+                st.success("Placar atualizado!")
