@@ -8,24 +8,10 @@ st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="cen
 # --- CSS CUSTOMIZADO: TEMA ESCURO COM NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
 st.markdown("""
 <style>
-    /* Forçar o fundo escuro clássico no aplicativo inteiro */
-    .stApp {
-        background-color: #0e1117 !important;
-        color: #ffffff !important;
-    }
+    .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
+    h1, h2, h3, h4, h5 { color: #009B3A !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
-    /* Títulos em Verde Brasil */
-    h1, h2, h3, h4, h5 {
-        color: #009B3A !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
-    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
-        color: #ffffff !important;
-    }
-    
-    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
         padding-top: 1rem; 
@@ -33,7 +19,6 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -43,7 +28,6 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
-    /* BOTÕES: Estilo Neon Brasil */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -60,7 +44,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
@@ -76,14 +59,10 @@ st.markdown("""
         border: 1px solid #30363d !important;
     }
     
-    /* Avatar gigante */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
-    
-    /* Abas de navegação superiores */
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
     .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
-    /* Efeito de brilho para o Top 1 no Ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -96,7 +75,6 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Estilo das linhas do ranking normal no modo escuro */
     .ranking-normal {
         background-color: #161a22;
         border-left: 5px solid #009B3A;
@@ -109,7 +87,6 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Estilo para o boneco dançando */
     .dancing-man {
         display: block;
         margin-left: auto;
@@ -126,7 +103,6 @@ st.markdown("""
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking com estilo Neon Brasil!")
 
-# Lista completa de avatares
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
@@ -134,7 +110,6 @@ lista_avatares = [
     "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
 ]
 
-# Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
     "Time A": "#ffffff", "Time B": "#ffffff", "Time C": "#ffffff", "Time D": "#ffffff",
     "Time E": "#ffffff", "Time F": "#ffffff", "Time G": "#ffffff", "Time H": "#ffffff",
@@ -142,7 +117,6 @@ cores_paises = {
     "Time M": "#ffffff", "Time N": "#ffffff", "Time O": "#ffffff", "Time P": "#ffffff"
 }
 
-# Dicionário de emojis de bandeiras para o WhatsApp
 bandeiras_emoji = {
     "Time A": "⚽", "Time B": "⚽", "Time C": "⚽", "Time D": "⚽",
     "Time E": "⚽", "Time F": "⚽", "Time G": "⚽", "Time H": "⚽",
@@ -150,7 +124,6 @@ bandeiras_emoji = {
     "Time M": "⚽", "Time N": "⚽", "Time O": "⚽", "Time P": "⚽"
 }
 
-# Inicializar Conexão com o Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
@@ -164,14 +137,12 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-# TRAVA ANTI-ERRO (KEYERROR): Se a coluna 'horário' não existir na planilha antiga, nós a criamos aqui!
 if "horário" not in df_jogos_sheet.columns:
     df_jogos_sheet["horário"] = ""
 
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# Lista completa de jogos com horários
 jogos_iniciais = [
     {"id": "J1", "time1": "Time A", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Time B", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
     {"id": "J2", "time1": "Time C", "flag1": "https://flagcdn.com/w160/py.png", "time2": "Time D", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
@@ -192,7 +163,6 @@ if novos_jogos:
 
 dict_jogos = {}
 for _, row in df_jogos_sheet.iterrows():
-    # Usando o .get para evitar qualquer KeyError futuro
     dict_jogos[row["id"]] = {
         "time1": row["time1"], "flag1": row["flag1"],
         "time2": row["time2"], "flag2": row["flag2"],
@@ -222,11 +192,7 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 with aba1:
     st.markdown("""
     <div style='text-align: center;'>
-        <video class="dancing-man" autoplay loop muted playsinline>
-            <source src="https://i.imgur.com/xQvA9rB.mp4" type="video/mp4">
-            <source src="https://i.imgur.com/xQvA9rB.gif" type="image/gif">
-            Seu navegador não suporta vídeos.
-        </video>
+        <img src="https://media.tenor.com/k91JvY41EIkAAAAi/dance-party.gif" class="dancing-man" alt="Boneco Dançando">
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -431,7 +397,6 @@ with aba3:
             if submit_adm:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 
-                # Salvando coluna por coluna para evitar o TypeError no Pandas
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
