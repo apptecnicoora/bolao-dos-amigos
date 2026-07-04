@@ -33,7 +33,7 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil (Borda Verde e brilho Amarelo/Verde) */
+    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -43,7 +43,7 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
-    /* BOTÕES: Estilo Neon Brasil (Fundo verde, texto amarelo e brilho ao tocar) */
+    /* BOTÕES: Estilo Neon Brasil */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -83,7 +83,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
     .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
-    /* Efeito de brilho para o Top 1 no Ranking (Degradê Verde/Azul com brilho Ouro) */
+    /* Efeito de brilho para o Top 1 no Ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -153,10 +153,8 @@ bandeiras_emoji = {
 # Inicializar Conexão com o Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Função para ler dados com segurança contra tabelas vazias e cache
 def ler_aba(nome_aba, colunas_padrao):
     try:
-        # ttl=15 reduz as requisições ao Google e evita travamentos
         df = conn.read(worksheet=nome_aba, ttl=15)
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
@@ -165,6 +163,11 @@ def ler_aba(nome_aba, colunas_padrao):
         return pd.DataFrame(columns=colunas_padrao)
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
+
+# TRAVA ANTI-ERRO (KEYERROR): Se a coluna 'horário' não existir na planilha antiga, nós a criamos aqui!
+if "horário" not in df_jogos_sheet.columns:
+    df_jogos_sheet["horário"] = ""
+
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
@@ -180,7 +183,6 @@ jogos_iniciais = [
     {"id": "J8", "time1": "Time O", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Time P", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 17:00"}
 ]
 
-# Adicionar automaticamente jogos novos e coluna de horário que não estejam na planilha
 ids_existentes = df_jogos_sheet["id"].tolist() if not df_jogos_sheet.empty else []
 novos_jogos = [j for j in jogos_iniciais if j["id"] not in ids_existentes]
 if novos_jogos:
@@ -188,20 +190,19 @@ if novos_jogos:
     conn.update(worksheet="Jogos", data=df_jogos_sheet)
     st.cache_data.clear()
 
-# Dicionário local para renderizar as partidas
 dict_jogos = {}
 for _, row in df_jogos_sheet.iterrows():
+    # Usando o .get para evitar qualquer KeyError futuro
     dict_jogos[row["id"]] = {
         "time1": row["time1"], "flag1": row["flag1"],
         "time2": row["time2"], "flag2": row["flag2"],
-        "gols1": int(row["gols1"]) if not pd.isna(row["gols1"]) else 0, 
-        "gols2": int(row["gols2"]) if not pd.isna(row["gols2"]) else 0,
-        "passa": row["passa"], 
-        "encerrado": str(row["encerrado"]) == "Sim",
-        "horário": row["horário"]
+        "gols1": int(row.get("gols1", 0)) if pd.notna(row.get("gols1", 0)) else 0, 
+        "gols2": int(row.get("gols2", 0)) if pd.notna(row.get("gols2", 0)) else 0,
+        "passa": row.get("passa", ""), 
+        "encerrado": str(row.get("encerrado", "Não")) == "Sim",
+        "horário": row.get("horário", "Horário a definir")
     }
 
-# Lógica de cálculo de pontuação
 def calcular_pontos(jogo, palpite):
     try:
         p1, p2, p_passa = int(palpite["p1"]), int(palpite["p2"]), palpite["passa"]
@@ -219,7 +220,6 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
 # ABA 1: RANKING E BONECO DANÇANDO
 with aba1:
-    # Adicionando o boneco dançando
     st.markdown("""
     <div style='text-align: center;'>
         <video class="dancing-man" autoplay loop muted playsinline>
@@ -265,7 +265,6 @@ with aba1:
             texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
         st.code(texto_whatsapp, language="text")
 
-        # --- NOVA SEÇÃO: VER PALPITES DOS ADVERSÁRIOS ---
         st.divider()
         st.subheader("👀 Ver e Copiar Palpites")
         st.caption("Clique no nome do participante abaixo para ver ou copiar os palpites dele.")
@@ -329,7 +328,7 @@ with aba2:
             
             with st.form(key=f"form_{id_jogo}"):
                 st.markdown(f'<h4 style="text-align: center; color: #ffffff !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
-                st.markdown(f'<p style="text-align: center; color: #8b949e !important; font-size: 0.9rem;">{j["horário"]}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p style="text-align: center; color: #8b949e !important; font-size: 0.9rem; margin-top: -15px;">{j["horário"]}</p>', unsafe_allow_html=True)
                 
                 cor_t1 = cores_paises.get(j["time1"], "#ffffff")
                 cor_t2 = cores_paises.get(j["time2"], "#ffffff")
@@ -343,7 +342,6 @@ with aba2:
                     st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
                     
                 c1, c2 = st.columns(2)
-                # Os botões + e - foram ocultados via CSS. Agora é só digitar o placar!
                 with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
                 with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
                     
@@ -359,27 +357,14 @@ with aba2:
                     elif p1 != p2 and passa != opcao_sem_penalti:
                         st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
                     else:
-                        palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
+                        df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
+                        passa_final = passa if passa != opcao_sem_penalti else ""
+                        novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
+                        df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                         
-                        placar_ja_existe = False
-                        dono_do_placar = ""
-                        for _, palpite_antigo in palpites_deste_jogo.iterrows():
-                            if int(palpite_antigo["p1"]) == p1 and int(palpite_antigo["p2"]) == p2:
-                                placar_ja_existe = True
-                                dono_do_placar = palpite_antigo["nome"]
-                                break
-                        
-                        if placar_ja_existe:
-                            st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
-                        else:
-                            df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
-                            passa_final = passa if passa != opcao_sem_penalti else ""
-                            novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
-                            df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
-                            
-                            conn.update(worksheet="Palpites", data=df_palpites)
-                            st.cache_data.clear()
-                            st.success("Gravado com sucesso no sistema!")
+                        conn.update(worksheet="Palpites", data=df_palpites)
+                        st.cache_data.clear()
+                        st.success("Gravado com sucesso no sistema!")
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
@@ -408,7 +393,7 @@ with aba2:
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
-# ABA 3: ADMIN COM CORREÇÃO DE ERRO
+# ABA 3: ADMIN COM CORREÇÃO DE ERRO NO SALVAMENTO
 with aba3:
     st.header("⚙️ Painel Administrador")
     
@@ -446,7 +431,7 @@ with aba3:
             if submit_adm:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 
-                # Correção do TypeError: Atualizando coluna por coluna para o Pandas não confundir números com textos
+                # Salvando coluna por coluna para evitar o TypeError no Pandas
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
                 df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
