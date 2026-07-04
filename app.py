@@ -5,19 +5,35 @@ from streamlit_gsheets import GSheetsConnection
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
 
-# --- CSS CUSTOMIZADO: NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
+# --- CSS CUSTOMIZADO: TEMA ESCURO COM NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
-    h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
+    /* Forçar o fundo escuro clássico no aplicativo inteiro */
+    .stApp {
+        background-color: #0e1117 !important;
+        color: #ffffff !important;
+    }
     
+    /* Títulos em Verde Brasil */
+    h1, h2, h3, h4, h5 {
+        color: #009B3A !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
+        color: #ffffff !important;
+    }
+    
+    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
-        padding-top: 1.5rem; 
+        padding-top: 1rem; 
         padding-left: 0.8rem; 
         padding-right: 0.8rem; 
     }
     
+    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil (Borda Verde e brilho Amarelo/Verde) */
     [data-testid="stForm"] {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -27,6 +43,7 @@ st.markdown("""
         margin-bottom: 25px !important;
     }
     
+    /* BOTÕES: Estilo Neon Brasil (Fundo verde, texto amarelo e brilho ao tocar) */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -43,6 +60,7 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
+    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
@@ -58,10 +76,14 @@ st.markdown("""
         border: 1px solid #30363d !important;
     }
     
+    /* Avatar gigante */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
+    
+    /* Abas de navegação superiores */
     .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; color: #8b949e; }
     .stTabs [aria-selected="true"] { color: #009B3A !important; border-bottom-color: #009B3A !important; }
     
+    /* Efeito de brilho para o Top 1 no Ranking (Degradê Verde/Azul com brilho Ouro) */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -74,6 +96,7 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
+    /* Estilo das linhas do ranking normal no modo escuro */
     .ranking-normal {
         background-color: #161a22;
         border-left: 5px solid #009B3A;
@@ -85,59 +108,79 @@ st.markdown("""
         margin-bottom: 8px;
         color: #ffffff;
     }
+
+    /* Estilo para o boneco dançando */
+    .dancing-man {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+        max-width: 180px;
+        height: auto;
+        border-radius: 50%;
+        box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚽ BOLÃO ONLINE DAS OITAVAS")
-st.markdown("Digite os seus palpites, grave e acompanhe o Ranking com estilo Neon Brasil!")
+st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
+st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking com estilo Neon Brasil!")
 
+# Lista completa de avatares
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
     "🦈", "🐙", "🐉", "🚀", "🎮", "🥋", "🤠", "🤡", "👻", "👽", 
-    "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻"
+    "😈", "Rex", "🦄", "🐸", "🐷", "🐯", "🐶", "🐺", "🐻", "🦖"
 ]
 
+# Dicionário de cores para o brilho das bandeiras no site
 cores_paises = {
-    "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
-    "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
-    "México": "#006341", "Inglaterra": "#CF081F", "EUA": "#3C3B6E", "Bélgica": "#ED2939",
-    "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
+    "Time A": "#ffffff", "Time B": "#ffffff", "Time C": "#ffffff", "Time D": "#ffffff",
+    "Time E": "#ffffff", "Time F": "#ffffff", "Time G": "#ffffff", "Time H": "#ffffff",
+    "Time I": "#ffffff", "Time J": "#ffffff", "Time K": "#ffffff", "Time L": "#ffffff",
+    "Time M": "#ffffff", "Time N": "#ffffff", "Time O": "#ffffff", "Time P": "#ffffff"
 }
 
+# Dicionário de emojis de bandeiras para o WhatsApp
 bandeiras_emoji = {
-    "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
-    "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
-    "México": "🇲🇽", "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "EUA": "🇺🇸", "Bélgica": "🇧🇪",
-    "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
+    "Time A": "⚽", "Time B": "⚽", "Time C": "⚽", "Time D": "⚽",
+    "Time E": "⚽", "Time F": "⚽", "Time G": "⚽", "Time H": "⚽",
+    "Time I": "⚽", "Time J": "⚽", "Time K": "⚽", "Time L": "⚽",
+    "Time M": "⚽", "Time N": "⚽", "Time O": "⚽", "Time P": "⚽"
 }
 
+# Inicializar Conexão com o Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# Função para ler dados com segurança contra tabelas vazias e cache
 def ler_aba(nome_aba, colunas_padrao):
     try:
-        df = conn.read(worksheet=nome_aba, ttl=30)
+        # ttl=15 reduz as requisições ao Google e evita travamentos
+        df = conn.read(worksheet=nome_aba, ttl=15)
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
         return df
     except:
         return pd.DataFrame(columns=colunas_padrao)
 
-df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado"])
+df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
+# Lista completa de jogos com horários
 jogos_iniciais = [
-    {"id": "J1", "time1": "Canadá", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J2", "time1": "Paraguai", "flag1": "https://flagcdn.com/w160/py.png", "time2": "França", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J3", "time1": "Brasil", "flag1": "https://flagcdn.com/w160/br.png", "time2": "Noruega", "flag2": "https://flagcdn.com/w160/no.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J4", "time1": "México", "flag1": "https://flagcdn.com/w160/mx.png", "time2": "Inglaterra", "flag2": "https://flagcdn.com/w160/gb-eng.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J5", "time1": "Portugal", "flag1": "https://flagcdn.com/w160/pt.png", "time2": "Espanha", "flag2": "https://flagcdn.com/w160/es.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J6", "time1": "EUA", "flag1": "https://flagcdn.com/w160/us.png", "time2": "Bélgica", "flag2": "https://flagcdn.com/w160/be.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J7", "time1": "Argentina", "flag1": "https://flagcdn.com/w160/ar.png", "time2": "Egito", "flag2": "https://flagcdn.com/w160/eg.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"},
-    {"id": "J8", "time1": "Suíça", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Colômbia", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não"}
+    {"id": "J1", "time1": "Time A", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Time B", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
+    {"id": "J2", "time1": "Time C", "flag1": "https://flagcdn.com/w160/py.png", "time2": "Time D", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
+    {"id": "J3", "time1": "Time E", "flag1": "https://flagcdn.com/w160/br.png", "time2": "Time F", "flag2": "https://flagcdn.com/w160/no.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 17:00"},
+    {"id": "J4", "time1": "Time G", "flag1": "https://flagcdn.com/w160/mx.png", "time2": "Time H", "flag2": "https://flagcdn.com/w160/gb-eng.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Dom., 05/07 21:00"},
+    {"id": "J5", "time1": "Time I", "flag1": "https://flagcdn.com/w160/pt.png", "time2": "Time J", "flag2": "https://flagcdn.com/w160/es.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 16:00"},
+    {"id": "J6", "time1": "Time K", "flag1": "https://flagcdn.com/w160/us.png", "time2": "Time L", "flag2": "https://flagcdn.com/w160/be.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Seg., 06/07 21:00"},
+    {"id": "J7", "time1": "Time M", "flag1": "https://flagcdn.com/w160/ar.png", "time2": "Time N", "flag2": "https://flagcdn.com/w160/eg.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 13:00"},
+    {"id": "J8", "time1": "Time O", "flag1": "https://flagcdn.com/w160/ch.png", "time2": "Time P", "flag2": "https://flagcdn.com/w160/co.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Ter., 07/07 17:00"}
 ]
 
+# Adicionar automaticamente jogos novos e coluna de horário que não estejam na planilha
 ids_existentes = df_jogos_sheet["id"].tolist() if not df_jogos_sheet.empty else []
 novos_jogos = [j for j in jogos_iniciais if j["id"] not in ids_existentes]
 if novos_jogos:
@@ -145,16 +188,20 @@ if novos_jogos:
     conn.update(worksheet="Jogos", data=df_jogos_sheet)
     st.cache_data.clear()
 
+# Dicionário local para renderizar as partidas
 dict_jogos = {}
 for _, row in df_jogos_sheet.iterrows():
     dict_jogos[row["id"]] = {
         "time1": row["time1"], "flag1": row["flag1"],
         "time2": row["time2"], "flag2": row["flag2"],
-        "gols1": int(row["gols1"]) if pd.notna(row["gols1"]) else 0, 
-        "gols2": int(row["gols2"]) if pd.notna(row["gols2"]) else 0,
-        "passa": row["passa"], "encerrado": str(row["encerrado"]) == "Sim"
+        "gols1": int(row["gols1"]) if not pd.isna(row["gols1"]) else 0, 
+        "gols2": int(row["gols2"]) if not pd.isna(row["gols2"]) else 0,
+        "passa": row["passa"], 
+        "encerrado": str(row["encerrado"]) == "Sim",
+        "horário": row["horário"]
     }
 
+# Lógica de cálculo de pontuação
 def calcular_pontos(jogo, palpite):
     try:
         p1, p2, p_passa = int(palpite["p1"]), int(palpite["p2"]), palpite["passa"]
@@ -170,9 +217,21 @@ def calcular_pontos(jogo, palpite):
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
-# ABA 1: RANKING E VISUALIZAÇÃO DE PALPITES
+# ABA 1: RANKING E BONECO DANÇANDO
 with aba1:
-    st.header("📊 Classificação Geral")
+    # Adicionando o boneco dançando
+    st.markdown("""
+    <div style='text-align: center;'>
+        <video class="dancing-man" autoplay loop muted playsinline>
+            <source src="https://i.imgur.com/xQvA9rB.mp4" type="video/mp4">
+            <source src="https://i.imgur.com/xQvA9rB.gif" type="image/gif">
+            Seu navegador não suporta vídeos.
+        </video>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.header("🏆 Classificação Geral")
     pontos_totais = {}
     
     for _, p in df_palpites.iterrows():
@@ -200,12 +259,12 @@ with aba1:
                 st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b></div>", unsafe_allow_html=True)
         
         st.divider()
-        st.subheader("📲 Enviar Placar para o WhatsApp")
+        st.subheader("📲 Enviar Placar Geral para o WhatsApp")
         texto_whatsapp = "🏆 *CLASSIFICAÇÃO DO BOLÃO* 🏆\n\n"
         for idx, row in df_ranking.iterrows():
             texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
         st.code(texto_whatsapp, language="text")
-        
+
         # --- NOVA SEÇÃO: VER PALPITES DOS ADVERSÁRIOS ---
         st.divider()
         st.subheader("👀 Ver e Copiar Palpites")
@@ -242,7 +301,7 @@ with aba1:
     else:
         st.info("Aguardando resultados oficiais para calcular a tabela!")
 
-# ABA 2: PALPITES OTIMIZADOS
+# ABA 2: PALPITES + HORÁRIOS + GERADOR INDIVIDUAL WHATSAPP
 with aba2:
     st.header("✍️ Dar Palpite")
     nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
@@ -270,9 +329,10 @@ with aba2:
             
             with st.form(key=f"form_{id_jogo}"):
                 st.markdown(f'<h4 style="text-align: center; color: #ffffff !important;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
+                st.markdown(f'<p style="text-align: center; color: #8b949e !important; font-size: 0.9rem;">{j["horário"]}</p>', unsafe_allow_html=True)
                 
-                cor_t1 = cores_paises.get(j["time1"], "#009B3A")
-                cor_t2 = cores_paises.get(j["time2"], "#009B3A")
+                cor_t1 = cores_paises.get(j["time1"], "#ffffff")
+                cor_t2 = cores_paises.get(j["time2"], "#ffffff")
                 
                 col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
                 with col_t1: 
@@ -283,6 +343,7 @@ with aba2:
                     st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
                     
                 c1, c2 = st.columns(2)
+                # Os botões + e - foram ocultados via CSS. Agora é só digitar o placar!
                 with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
                 with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
                     
@@ -298,14 +359,27 @@ with aba2:
                     elif p1 != p2 and passa != opcao_sem_penalti:
                         st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
                     else:
-                        df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
-                        passa_final = passa if passa != opcao_sem_penalti else ""
-                        novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
-                        df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
+                        palpites_deste_jogo = df_palpites[(df_palpites["jogo"] == id_jogo) & (df_palpites["nome"] != nome_usuario)]
                         
-                        conn.update(worksheet="Palpites", data=df_palpites)
-                        st.cache_data.clear()
-                        st.success("Gravado com sucesso no sistema!")
+                        placar_ja_existe = False
+                        dono_do_placar = ""
+                        for _, palpite_antigo in palpites_deste_jogo.iterrows():
+                            if int(palpite_antigo["p1"]) == p1 and int(palpite_antigo["p2"]) == p2:
+                                placar_ja_existe = True
+                                dono_do_placar = palpite_antigo["nome"]
+                                break
+                        
+                        if placar_ja_existe:
+                            st.error(f"❌ O(a) **{dono_do_placar}** já escolheu esse placar ({p1} x {p2}). Mude seu palpite!")
+                        else:
+                            df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
+                            passa_final = passa if passa != opcao_sem_penalti else ""
+                            novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
+                            df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
+                            
+                            conn.update(worksheet="Palpites", data=df_palpites)
+                            st.cache_data.clear()
+                            st.success("Gravado com sucesso no sistema!")
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
@@ -334,7 +408,7 @@ with aba2:
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
-# ABA 3: ADMIN
+# ABA 3: ADMIN COM CORREÇÃO DE ERRO
 with aba3:
     st.header("⚙️ Painel Administrador")
     
@@ -371,7 +445,13 @@ with aba3:
             
             if submit_adm:
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
-                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, ["gols1", "gols2", "passa", "encerrado"]] = [g1, g2, passa_final_adm, "Sim" if encerrar else "Não"]
+                
+                # Correção do TypeError: Atualizando coluna por coluna para o Pandas não confundir números com textos
+                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
+                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
+                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
+                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "encerrado"] = "Sim" if encerrar else "Não"
+                
                 conn.update(worksheet="Jogos", data=df_jogos_sheet)
                 st.cache_data.clear()
-                st.success("Placar atualizado!")
+                st.success("Placar oficial atualizado com sucesso!")
