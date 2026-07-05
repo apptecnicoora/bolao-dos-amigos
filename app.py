@@ -2,31 +2,19 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import random
+import base64
+import os
 
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
 
-# --- CSS CUSTOMIZADO: TEMA ESCURO COM NEON BRASIL E REMOÇÃO DOS BOTÕES + e - ---
+# --- CSS CUSTOMIZADO: TEMA ESCURO COM NEON BRASIL ---
 st.markdown("""
 <style>
-    /* Forçar o fundo escuro clássico no aplicativo inteiro */
-    .stApp {
-        background-color: #0e1117 !important;
-        color: #ffffff !important;
-    }
+    .stApp { background-color: #0e1117 !important; color: #ffffff !important; }
+    h1, h2, h3, h4, h5 { color: #009B3A !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+    h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
-    /* Títulos em Verde Brasil */
-    h1, h2, h3, h4, h5 {
-        color: #009B3A !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    /* Garantir que todos os textos, títulos e labels fiquem brancos e legíveis */
-    h1, h2, h3, h4, h5, p, span, label, .stMarkdown {
-        color: #ffffff !important;
-    }
-    
-    /* Largura ideal para visualização perfeita em telemóveis */
     .main .block-container { 
         max-width: 480px; 
         padding-top: 1rem; 
@@ -34,7 +22,6 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS E EXPANDERS: Caixa com efeito Neon Brasil */
     [data-testid="stForm"], .stExpander {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -44,7 +31,6 @@ st.markdown("""
         margin-bottom: 20px !important;
     }
     
-    /* BOTÕES: Estilo Neon Brasil */
     .stButton > button {
         background-color: #009B3A !important;
         color: #FFDF00 !important;
@@ -63,12 +49,8 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.8) !important;
     }
 
-    /* ESCONDER BOTÕES DE + E - NOS CAMPOS DE NÚMERO */
     input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0; 
-    }
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] {
         -moz-appearance: textfield;
         text-align: center !important;
@@ -80,10 +62,8 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* Avatar gigante */
     .avatar-grande-display { font-size: 85px; text-align: center; margin-top: -10px; margin-bottom: 10px; }
     
-    /* Efeito de brilho para o Top 1 no Ranking */
     .top1-glow {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -96,7 +76,6 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Estilo das linhas do ranking normal */
     .ranking-normal {
         background-color: #161a22;
         border-left: 5px solid #009B3A;
@@ -109,7 +88,6 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Caixa do Sorteio e Imagens */
     .player-draw-box {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
@@ -134,6 +112,9 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 155, 58, 0.6);
         margin-bottom: 25px;
         width: 100%;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -141,7 +122,6 @@ st.markdown("""
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking!")
 
-# Lista de avatares e dicionários de países
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
@@ -163,6 +143,13 @@ bandeiras_emoji = {
     "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
 }
 
+# --- FUNÇÃO PARA LER A IMAGEM LOCAL DO GITHUB ---
+def obter_imagem_local_base64(caminho_arquivo):
+    if os.path.exists(caminho_arquivo):
+        with open(caminho_arquivo, "rb") as arquivo_imagem:
+            return base64.b64encode(arquivo_imagem.read()).decode()
+    return None
+
 # --- INICIALIZAR CONEXÃO E LER DADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -177,7 +164,6 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-# TRAVAS ANTI-ERRO (Horário e Admin TypeError)
 if "horário" not in df_jogos_sheet.columns:
     df_jogos_sheet["horário"] = ""
 
@@ -187,7 +173,6 @@ df_jogos_sheet["encerrado"] = df_jogos_sheet["encerrado"].astype(object)
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# Criar jogos iniciais se a planilha estiver vazia
 jogos_iniciais = [
     {"id": "J1", "time1": "Canadá", "flag1": "https://flagcdn.com/w160/ca.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 14:00"},
     {"id": "J2", "time1": "Paraguai", "flag1": "https://flagcdn.com/w160/py.png", "time2": "França", "flag2": "https://flagcdn.com/w160/fr.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sáb., 04/07 18:00"},
@@ -238,12 +223,19 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 # --- ABA 1: RANKING E SORTEIO DO JOGADOR ---
 with aba1:
     
-    # IMAGEM FIXA DO RONALDINHO NO TOPO (Como você pediu)
-    st.markdown("""
-    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg" class="imagem-topo-app" alt="Ronaldinho Gaúcho">
-    """, unsafe_allow_html=True)
+    # IMAGEM FIXA DO RONALDINHO NO TOPO PUXANDO DO SEU GITHUB LOCAL
+    imagem_base64 = obter_imagem_local_base64("ronaldinho.gif")
     
-    # CAIXA DE SORTEIO VISÍVEL NO TOPO (Imagens oficiais da Wikipédia, 100% blindadas contra erros no celular)
+    if imagem_base64:
+        st.markdown(f"""
+        <div style='text-align: center;'>
+            <img src="data:image/gif;base64,{imagem_base64}" class="imagem-topo-app" alt="Ronaldinho Dançando">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ O arquivo 'ronaldinho.gif' não foi encontrado. Verifique se o arquivo está na mesma pasta do código no GitHub.")
+    
+    # CAIXA DE SORTEIO VISÍVEL NO TOPO COM LINKS SEGUROS DA WIKIPEDIA
     st.markdown("<div class='player-draw-box'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ffffff; margin-top: 0;'>🎲 Qual Jogador Você é Hoje?</h3>", unsafe_allow_html=True)
     st.write("Aperte o botão para descobrir sua energia para os palpites!")
