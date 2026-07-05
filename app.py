@@ -34,7 +34,7 @@ st.markdown("""
         padding-right: 0.8rem; 
     }
     
-    /* CARDS DOS JOGOS: Caixa com efeito Neon Brasil */
+    /* CARDS DOS JOGOS E EXPANDERS: Caixa com efeito Neon Brasil */
     [data-testid="stForm"], .stExpander {
         background-color: #161a22 !important;
         border: 2px solid #009B3A !important;
@@ -109,12 +109,12 @@ st.markdown("""
         color: #ffffff;
     }
 
-    /* Caixa do Sorteio */
+    /* Caixa do Sorteio e Imagens */
     .player-draw-box {
         background: linear-gradient(145deg, #1f242e, #161a22);
         border: 2px solid #FFDF00;
         border-radius: 15px;
-        padding: 15px;
+        padding: 20px;
         text-align: center;
         margin-bottom: 30px;
         box-shadow: 0 0 15px rgba(255, 223, 0, 0.2);
@@ -123,7 +123,17 @@ st.markdown("""
     .imagem-jogador {
         border-radius: 12px;
         border: 2px solid #009B3A;
-        margin-top: 10px;
+        margin-top: 15px;
+        width: 100%;
+        box-shadow: 0 0 15px rgba(0, 155, 58, 0.4);
+    }
+
+    .imagem-topo-app {
+        border-radius: 15px;
+        border: 3px solid #009B3A;
+        box-shadow: 0 0 20px rgba(0, 155, 58, 0.6);
+        margin-bottom: 25px;
+        width: 100%;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -131,7 +141,7 @@ st.markdown("""
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking!")
 
-# Lista de avatares
+# Lista de avatares e dicionários de países
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
     "🤖", "🧙‍♂️", "🥷", "🦸‍♂️", "🕵️‍♂️", "🧑‍💻", "🦊", "🦅", "🦍", "🐼", 
@@ -228,23 +238,28 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 # --- ABA 1: RANKING E SORTEIO DO JOGADOR ---
 with aba1:
     
-    # CAIXA DE SORTEIO VISÍVEL NO TOPO COM LINKS SEGUROS
+    # IMAGEM FIXA DO RONALDINHO NO TOPO (Como você pediu)
+    st.markdown("""
+    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg" class="imagem-topo-app" alt="Ronaldinho Gaúcho">
+    """, unsafe_allow_html=True)
+    
+    # CAIXA DE SORTEIO VISÍVEL NO TOPO (Imagens oficiais da Wikipédia, 100% blindadas contra erros no celular)
     st.markdown("<div class='player-draw-box'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #ffffff;'>🎲 Sorteio: Qual Jogador Você é Hoje?</h3>", unsafe_allow_html=True)
-    st.write("Aperte o botão para descobrir sua energia para os palpites de hoje!")
+    st.markdown("<h3 style='color: #ffffff; margin-top: 0;'>🎲 Qual Jogador Você é Hoje?</h3>", unsafe_allow_html=True)
+    st.write("Aperte o botão para descobrir sua energia para os palpites!")
     
     if st.button("SORTEAR MEU JOGADOR", use_container_width=True):
         jogadores = [
-            ("Ronaldinho Gaúcho (O Bruxo)", "https://s2.glbimg.com/Q281B94oUoIq7O_f7M-5Q4J1kU4=/0x0:2024x1401/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2020/P/z/k1UaM1RkymJb4U0pQ8BA/ronaldinho-gaucho-selecao-2006.jpg"),
-            ("Cássio (O Paredão)", "https://s2-ge.glbimg.com/yG1T8_NlBtkGvE6d4k2jXqf_VfI=/0x0:3000x2000/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2023/K/N/R96q4gQ3W8oP7YgB1bSA/agencia-corinthians.jpg"),
-            ("Neymar Jr (Ousadia e Alegria)", "https://s2-ge.glbimg.com/uGzU-42VvE-Ld9n8Xh2w9z_2_J0=/0x0:1080x1080/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2022/b/6/b9r8aZTfGYo1fL5Y5oBg/neymar.jpg"),
-            ("Cristiano Ronaldo (A Máquina)", "https://s2.glbimg.com/8Qp4-3K1yW4GgK9v_4T4vQ9X5j0=/0x0:3543x2362/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2022/E/X/m4vA09QKqQ1iVbX2R2LQ/2022-11-24t165215z-1123471018-up1eibo1aqstq-rtrmadp-3-soccer-worldcup-por-gha-report.jpg"),
-            ("Lionel Messi (O Gênio)", "https://s2-ge.glbimg.com/R3aG3x_7D_J9s0W_Q9_F8_m_H-I=/0x0:3500x2334/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_bc8228b6673f488aa253bbcb03c80ec5/internal_photos/bs/2022/H/E/qB0Q5BQ1W6xI8rP8p3YQ/2022-12-18t181514z-1681285265-up1eici1drk1q-rtrmadp-3-soccer-worldcup-arg-fra-report.jpg")
+            ("Ronaldinho Gaúcho (O Bruxo)", "https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg"),
+            ("Cássio (O Paredão)", "https://upload.wikimedia.org/wikipedia/commons/8/8e/C%C3%A1ssio_Ramos_2018.jpg"),
+            ("Neymar Jr (Ousadia e Alegria)", "https://upload.wikimedia.org/wikipedia/commons/b/bb/Neymar_Jr._with_Al_Hilal%2C_3_October_2023_-_03_%28cropped%29.jpg"),
+            ("Cristiano Ronaldo (A Máquina)", "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cristiano_Ronaldo_playing_for_Al_Nassr_FC_against_Persepolis%2C_September_2023_%28cropped%29.jpg"),
+            ("Lionel Messi (O Gênio)", "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg")
         ]
         nome_sorteado, imagem_sorteada = random.choice(jogadores)
         
         st.success(f"Você tirou: **{nome_sorteado}**")
-        st.markdown(f"<img src='{imagem_sorteada}' class='imagem-jogador' width='100%'>", unsafe_allow_html=True)
+        st.markdown(f"<img src='{imagem_sorteada}' class='imagem-jogador'>", unsafe_allow_html=True)
         
     st.markdown("</div>", unsafe_allow_html=True)
 
