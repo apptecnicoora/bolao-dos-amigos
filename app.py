@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import random
-import base64
 import os
+import json
+import urllib.request
+import urllib.parse
+import base64
 
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
@@ -150,6 +153,34 @@ def obter_imagem_local_base64(caminho_arquivo):
             return base64.b64encode(arquivo_imagem.read()).decode()
     return None
 
+# --- MOTOR DE BUSCA DA WIKIPEDIA (BLINDADO) ---
+def buscar_imagem_wikipedia(nome_artigo):
+    try:
+        nome_codificado = urllib.parse.quote(nome_artigo.replace(' ', '_'))
+        url = f"https://pt.wikipedia.org/w/api.php?action=query&titles={nome_codificado}&prop=pageimages&format=json&pithumbsize=600"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response:
+            dados = json.loads(response.read().decode())
+            paginas = dados.get('query', {}).get('pages', {})
+            for page_id in paginas:
+                if 'thumbnail' in paginas[page_id]:
+                    return paginas[page_id]['thumbnail']['source']
+        
+        # Tenta na Wikipedia em inglês como plano B
+        url_en = f"https://en.wikipedia.org/w/api.php?action=query&titles={nome_codificado}&prop=pageimages&format=json&pithumbsize=600"
+        req_en = urllib.request.Request(url_en, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req_en, timeout=3) as response_en:
+            dados_en = json.loads(response_en.read().decode())
+            paginas_en = dados_en.get('query', {}).get('pages', {})
+            for page_id in paginas_en:
+                if 'thumbnail' in paginas_en[page_id]:
+                    return paginas_en[page_id]['thumbnail']['source']
+    except:
+        pass
+    # Se falhar tudo, mostra uma imagem padrão
+    return "https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg"
+
+
 # --- INICIALIZAR CONEXÃO E LER DADOS ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -206,49 +237,145 @@ for _, row in df_jogos_sheet.iterrows():
 # --- REGRA HARDCORE: APENAS PLACAR EXATO GANHA 5 PONTOS ---
 def calcular_pontos(jogo, palpite):
     try:
-        p1 = int(palpite["p1"])
-        p2 = int(palpite["p2"])
-        r1 = jogo["gols1"]
-        r2 = jogo["gols2"]
-        
-        if p1 == r1 and p2 == r2:
-            return 5
-            
+        p1, p2 = int(palpite["p1"]), int(palpite["p2"])
+        r1, r2 = jogo["gols1"], jogo["gols2"]
+        if p1 == r1 and p2 == r2: return 5
         return 0
-    except:
-        return 0
+    except: return 0
 
 aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
 # --- ABA 1: RANKING E SORTEIO DO JOGADOR ---
 with aba1:
     
-    # IMAGEM FIXA DO RONALDINHO NO TOPO PUXANDO DO SEU GITHUB LOCAL
+    # SISTEMA INTELIGENTE DE IMAGEM NO TOPO
     imagem_base64 = obter_imagem_local_base64("ronaldinho.gif")
-    
     if imagem_base64:
         st.markdown(f"""
         <div style='text-align: center;'>
             <img src="data:image/gif;base64,{imagem_base64}" class="imagem-topo-app" alt="Ronaldinho Dançando">
         </div>
         """, unsafe_allow_html=True)
+    elif os.path.exists("ronaldinho.png"):
+        st.image("ronaldinho.png", use_container_width=True)
+    elif os.path.exists("ronaldinho.jpg"):
+        st.image("ronaldinho.jpg", use_container_width=True)
     else:
-        st.warning("⚠️ O arquivo 'ronaldinho.gif' não foi encontrado. Verifique se o arquivo está na mesma pasta do código no GitHub.")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg", use_container_width=True)
     
-    # CAIXA DE SORTEIO VISÍVEL NO TOPO COM LINKS SEGUROS DA WIKIPEDIA
+    # CAIXA DE SORTEIO VISÍVEL COM OS 100 JOGADORES
     st.markdown("<div class='player-draw-box'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ffffff; margin-top: 0;'>🎲 Qual Jogador Você é Hoje?</h3>", unsafe_allow_html=True)
     st.write("Aperte o botão para descobrir sua energia para os palpites!")
     
     if st.button("SORTEAR MEU JOGADOR", use_container_width=True):
         jogadores = [
-            ("Ronaldinho Gaúcho (O Bruxo)", "https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg"),
-            ("Cássio (O Paredão)", "https://upload.wikimedia.org/wikipedia/commons/8/8e/C%C3%A1ssio_Ramos_2018.jpg"),
-            ("Neymar Jr (Ousadia e Alegria)", "https://upload.wikimedia.org/wikipedia/commons/b/bb/Neymar_Jr._with_Al_Hilal%2C_3_October_2023_-_03_%28cropped%29.jpg"),
-            ("Cristiano Ronaldo (A Máquina)", "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cristiano_Ronaldo_playing_for_Al_Nassr_FC_against_Persepolis%2C_September_2023_%28cropped%29.jpg"),
-            ("Lionel Messi (O Gênio)", "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg")
+            ("Ronaldinho Gaúcho (O Bruxo)", "Ronaldinho_Gaúcho"),
+            ("Cássio (O Paredão)", "Cássio_Ramos"),
+            ("Neymar Jr", "Neymar"),
+            ("Cristiano Ronaldo", "Cristiano_Ronaldo"),
+            ("Lionel Messi", "Lionel_Messi"),
+            ("Pelé (O Rei)", "Pelé"),
+            ("Diego Maradona", "Diego_Maradona"),
+            ("Ronaldo Fenômeno", "Ronaldo_Nazário"),
+            ("Sócrates (O Doutor)", "Sócrates_(futebolista)"),
+            ("Marcelinho Carioca", "Marcelinho_Carioca"),
+            ("Craque Neto", "Neto_(futebolista)"),
+            ("Rivellino", "Roberto_Rivellino"),
+            ("Paulinho", "Paulinho_(futebolista)"),
+            ("Renato Augusto", "Renato_Augusto"),
+            ("Paolo Guerrero", "Paolo_Guerrero"),
+            ("Dida", "Dida_(futebolista_nascido_em_1973)"),
+            ("Vampeta", "Vampeta"),
+            ("Edílson Capetinha", "Edílson"),
+            ("Carlos Tevez", "Carlos_Tevez"),
+            ("Zinedine Zidane", "Zinedine_Zidane"),
+            ("Romário", "Romário"),
+            ("Zico", "Zico"),
+            ("Kaká", "Kaká"),
+            ("Kylian Mbappé", "Kylian_Mbappé"),
+            ("Erling Haaland", "Erling_Haaland"),
+            ("Kevin De Bruyne", "Kevin_De_Bruyne"),
+            ("Robert Lewandowski", "Robert_Lewandowski"),
+            ("Zlatan Ibrahimović", "Zlatan_Ibrahimović"),
+            ("Gianluigi Buffon", "Gianluigi_Buffon"),
+            ("Roberto Carlos", "Roberto_Carlos"),
+            ("Johan Cruyff", "Johan_Cruyff"),
+            ("Franz Beckenbauer", "Franz_Beckenbauer"),
+            ("Michel Platini", "Michel_Platini"),
+            ("Thierry Henry", "Thierry_Henry"),
+            ("Andrés Iniesta", "Andrés_Iniesta"),
+            ("Xavi", "Xavi"),
+            ("Sergio Ramos", "Sergio_Ramos"),
+            ("Iker Casillas", "Iker_Casillas"),
+            ("Luka Modrić", "Luka_Modrić"),
+            ("Karim Benzema", "Karim_Benzema"),
+            ("Luis Suárez", "Luis_Suárez"),
+            ("Gareth Bale", "Gareth_Bale"),
+            ("Wayne Rooney", "Wayne_Rooney"),
+            ("Ryan Giggs", "Ryan_Giggs"),
+            ("Paul Scholes", "Paul_Scholes"),
+            ("Steven Gerrard", "Steven_Gerrard"),
+            ("Frank Lampard", "Frank_Lampard"),
+            ("Didier Drogba", "Didier_Drogba"),
+            ("Samuel Eto'o", "Samuel_Eto'o"),
+            ("Yaya Touré", "Yaya_Touré"),
+            ("Mohamed Salah", "Mohamed_Salah"),
+            ("Sadio Mané", "Sadio_Mané"),
+            ("Riyad Mahrez", "Riyad_Mahrez"),
+            ("George Weah", "George_Weah"),
+            ("Eusébio", "Eusébio"),
+            ("Lev Yashin", "Lev_Yashin"),
+            ("Ferenc Puskás", "Ferenc_Puskás"),
+            ("Alfredo Di Stéfano", "Alfredo_Di_Stéfano"),
+            ("Garrincha", "Garrincha"),
+            ("Jairzinho", "Jairzinho"),
+            ("Tostão", "Tostão"),
+            ("Gérson", "Gérson"),
+            ("Carlos Alberto Torres", "Carlos_Alberto_Torres"),
+            ("Cafu", "Cafu"),
+            ("Rivaldo", "Rivaldo"),
+            ("Bebeto", "Bebeto"),
+            ("Cláudio Taffarel", "Cláudio_Taffarel"),
+            ("Marcos (Goleiro)", "Marcos_(futebolista)"),
+            ("Rogério Ceni", "Rogério_Ceni"),
+            ("Alisson Becker", "Alisson_Becker"),
+            ("Ederson Moraes", "Ederson_Moraes"),
+            ("Virgil van Dijk", "Virgil_van_Dijk"),
+            ("Trent Alexander-Arnold", "Trent_Alexander-Arnold"),
+            ("Alphonso Davies", "Alphonso_Davies"),
+            ("Achraf Hakimi", "Achraf_Hakimi"),
+            ("N'Golo Kanté", "N'Golo_Kanté"),
+            ("Casemiro", "Casemiro"),
+            ("Toni Kroos", "Toni_Kroos"),
+            ("Sergio Busquets", "Sergio_Busquets"),
+            ("Pedri", "Pedri"),
+            ("Jude Bellingham", "Jude_Bellingham"),
+            ("Vinícius Júnior", "Vinícius_Júnior"),
+            ("Rodrygo", "Rodrygo"),
+            ("Phil Foden", "Phil_Foden"),
+            ("Bukayo Saka", "Bukayo_Saka"),
+            ("Harry Kane", "Harry_Kane"),
+            ("Son Heung-min", "Son_Heung-min"),
+            ("Antoine Griezmann", "Antoine_Griezmann"),
+            ("Olivier Giroud", "Olivier_Giroud"),
+            ("Hugo Lloris", "Hugo_Lloris"),
+            ("Manuel Neuer", "Manuel_Neuer"),
+            ("Thomas Müller", "Thomas_Müller"),
+            ("Joshua Kimmich", "Joshua_Kimmich"),
+            ("Jamal Musiala", "Jamal_Musiala"),
+            ("Leroy Sané", "Leroy_Sané"),
+            ("Serge Gnabry", "Serge_Gnabry"),
+            ("İlkay Gündoğan", "İlkay_Gündoğan"),
+            ("Christian Pulisic", "Christian_Pulisic"),
+            ("Keylor Navas", "Keylor_Navas"),
+            ("Roberto Baggio", "Roberto_Baggio")
         ]
-        nome_sorteado, imagem_sorteada = random.choice(jogadores)
+        
+        nome_sorteado, titulo_wiki = random.choice(jogadores)
+        
+        with st.spinner("Puxando foto oficial..."):
+            imagem_sorteada = buscar_imagem_wikipedia(titulo_wiki)
         
         st.success(f"Você tirou: **{nome_sorteado}**")
         st.markdown(f"<img src='{imagem_sorteada}' class='imagem-jogador'>", unsafe_allow_html=True)
