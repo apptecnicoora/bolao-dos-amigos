@@ -181,7 +181,7 @@ def buscar_imagem_wikipedia(nome_artigo):
     return "https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg"
 
 
-# --- INICIALIZAR CONEXÃO E LER DADOS ---
+# --- INICIALIZAR CONEXÃO E LER DADOS (COM BLINDAGEM) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def ler_aba(nome_aba, colunas_padrao):
@@ -190,8 +190,10 @@ def ler_aba(nome_aba, colunas_padrao):
         if df.empty:
             return pd.DataFrame(columns=colunas_padrao)
         return df
-    except:
-        return pd.DataFrame(columns=colunas_padrao)
+    except Exception as e:
+        # TRAVA: Se falhar a leitura, não retorna vazio pra não sobrescrever. Trava o app.
+        st.error(f"⚠️ Google Sheets falhou ao carregar a aba {nome_aba}. Por favor, recarregue a página.")
+        st.stop()
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
@@ -461,14 +463,29 @@ with aba2:
         avatar_escolhido = st.selectbox("Escolha seu Avatar:", lista_avatares, index=lista_avatares.index(avatar_atual))
         
         if user_row.empty:
-            nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
-            df_usuarios = pd.concat([df_usuarios, nova_linha], ignore_index=True)
-            conn.update(worksheet="Usuarios", data=df_usuarios)
+            # TRAVA DE SEGURANÇA NA CRIAÇÃO DE USUÁRIO
             st.cache_data.clear()
+            try:
+                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
+                nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
+                df_usuarios_safe = pd.concat([df_usuarios_safe, nova_linha], ignore_index=True)
+                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
+            except:
+                st.error("Erro ao conectar no banco para salvar usuário. Tente novamente.")
+            st.cache_data.clear()
+            st.rerun()
+            
         elif avatar_atual != avatar_escolhido:
-            df_usuarios.loc[df_usuarios["nome"] == nome_usuario, "avatar"] = avatar_escolhido
-            conn.update(worksheet="Usuarios", data=df_usuarios)
+            # TRAVA DE SEGURANÇA NA ATUALIZAÇÃO DE AVATAR
             st.cache_data.clear()
+            try:
+                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
+                df_usuarios_safe.loc[df_usuarios_safe["nome"] == nome_usuario, "avatar"] = avatar_escolhido
+                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
+            except:
+                st.error("Erro ao conectar no banco para atualizar avatar.")
+            st.cache_data.clear()
+            st.rerun()
             
         st.markdown(f'<div class="avatar-grande-display">{avatar_escolhido}</div>', unsafe_allow_html=True)
         st.divider()
@@ -507,14 +524,31 @@ with aba2:
                     elif p1 != p2 and passa != opcao_sem_penalti:
                         st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
                     else:
-                        df_palpites = df_palpites[~((df_palpites["nome"] == nome_usuario) & (df_palpites["jogo"] == id_jogo))]
+                        # TRAVA DE SEGURANÇA MÁXIMA (ANTI-WIPE) NO PALPITE
+                        st.cache_data.clear()
+                        try:
+                            # Força a leitura do dado REAL na hora do clique para não sobrescrever o dos amigos
+                            df_palpites_safe = conn.read(worksheet="Palpites", ttl=0)
+                        except Exception as e:
+                            st.error("Falha na conexão com o banco. O palpite NÃO foi gravado para proteger os dados. Tente novamente.")
+                            st.stop()
+                            
+                        if df_palpites_safe.empty:
+                            df_palpites_safe = pd.DataFrame(columns=["nome", "jogo", "p1", "p2", "passa"])
+                            
+                        # Limpa o palpite antigo do usuário neste jogo
+                        df_palpites_safe = df_palpites_safe[~((df_palpites_safe["nome"] == nome_usuario) & (df_palpites_safe["jogo"] == id_jogo))]
+                        
                         passa_final = passa if passa != opcao_sem_penalti else ""
                         novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
-                        df_palpites = pd.concat([df_palpites, novo_p], ignore_index=True)
                         
-                        conn.update(worksheet="Palpites", data=df_palpites)
+                        # Junta com os dados 100% atualizados
+                        df_palpites_safe = pd.concat([df_palpites_safe, novo_p], ignore_index=True)
+                        
+                        conn.update(worksheet="Palpites", data=df_palpites_safe)
                         st.cache_data.clear()
                         st.success("Gravado com sucesso no sistema!")
+                        st.rerun() # Atualiza a tela automaticamente
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
@@ -551,13 +585,21 @@ with aba3:
     if lista_nomes:
         usuario_remover = st.selectbox("Selecione um participante para expulsar do bolão:", lista_nomes)
         if st.button("Apagar Usuário e Palpites", type="primary"):
-            df_usuarios = df_usuarios[df_usuarios["nome"] != usuario_remover]
-            df_palpites = df_palpites[df_palpites["nome"] != usuario_remover]
-            conn.update(worksheet="Usuarios", data=df_usuarios)
-            conn.update(worksheet="Palpites", data=df_palpites)
             st.cache_data.clear()
-            st.success(f"Usuário {usuario_remover} removido com sucesso!")
-            st.rerun()
+            try:
+                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
+                df_palpites_safe = conn.read(worksheet="Palpites", ttl=0)
+                
+                df_usuarios_safe = df_usuarios_safe[df_usuarios_safe["nome"] != usuario_remover]
+                df_palpites_safe = df_palpites_safe[df_palpites_safe["nome"] != usuario_remover]
+                
+                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
+                conn.update(worksheet="Palpites", data=df_palpites_safe)
+                st.cache_data.clear()
+                st.success(f"Usuário {usuario_remover} removido com sucesso!")
+                st.rerun()
+            except:
+                st.error("Erro de conexão ao tentar apagar usuário.")
         
     st.divider()
     
@@ -578,13 +620,22 @@ with aba3:
             submit_adm = st.form_submit_button("Gravar Placar Oficial", use_container_width=True)
             
             if submit_adm:
+                # TRAVA DE SEGURANÇA MÁXIMA (ANTI-WIPE) NO ADMIN
+                st.cache_data.clear()
+                try:
+                    df_jogos_safe = conn.read(worksheet="Jogos", ttl=0)
+                except:
+                    st.error("Erro na leitura do banco. Placar NÃO foi gravado. Tente novamente.")
+                    st.stop()
+                    
                 passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
                 
-                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols1"] = g1
-                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "gols2"] = g2
-                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "passa"] = passa_final_adm
-                df_jogos_sheet.loc[df_jogos_sheet["id"] == id_jogo, "encerrado"] = "Sim" if encerrar else "Não"
+                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols1"] = g1
+                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols2"] = g2
+                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "passa"] = passa_final_adm
+                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "encerrado"] = "Sim" if encerrar else "Não"
                 
-                conn.update(worksheet="Jogos", data=df_jogos_sheet)
+                conn.update(worksheet="Jogos", data=df_jogos_safe)
                 st.cache_data.clear()
                 st.success("Placar oficial atualizado com sucesso!")
+                st.rerun()
