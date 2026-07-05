@@ -3,6 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import base64
 import os
+import random
 
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Oitavas", page_icon="⚽", layout="centered")
@@ -100,8 +101,37 @@ st.markdown("""
         border: 3px solid #FFDF00;
         box-shadow: 0 0 25px 5px rgba(0, 155, 58, 0.7);
     }
+    
+    .gif-sorteio {
+        border-radius: 12px;
+        border: 2px solid #009B3A;
+        width: 100%;
+        margin-top: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# --- MINIGAME NA BARRA LATERAL (SIDEBAR) ---
+with st.sidebar:
+    st.header("🎲 Qual jogador você é hoje?")
+    st.write("Clique abaixo para sortear o seu mood do dia para o bolão!")
+    
+    if st.button("Sortear Meu Jogador!", type="primary", use_container_width=True):
+        gifs_jogadores = [
+            ("Ronaldinho (O Bruxo da Festa)", "https://media.giphy.com/media/8cErRl4M1KIiXpW3Fp/giphy.gif"),
+            ("Cristiano Ronaldo (A Máquina - SIIUU)", "https://media.giphy.com/media/xT1XGVp95PNYTFg5p6/giphy.gif"),
+            ("Messi (O Gênio Calmo)", "https://media.giphy.com/media/TjAcxImn74uo1ODzMi/giphy.gif"),
+            ("Neymar (Ousadia e Alegria)", "https://media.giphy.com/media/l41lOugZmGBoQ4M6s/giphy.gif"),
+            ("Cássio (O Paredão Frio)", "https://media.tenor.com/tHqX1sR2A7oAAAAC/cassio-corinthians.gif"),
+            ("Richarlison (O Pombo)", "https://media.giphy.com/media/wMjd1Xk8dZf5Z91U9m/giphy.gif")
+        ]
+        jogador_sorteado = random.choice(gifs_jogadores)
+        
+        st.success(f"**Você tirou:** {jogador_sorteado[0]}")
+        st.markdown(f"<img src='{jogador_sorteado[1]}' class='gif-sorteio'>", unsafe_allow_html=True)
+    st.divider()
+    st.caption("Arraste para o lado para fechar este menu.")
+
 
 st.title("⚽ BOLÃO ONLINE DAS OITAVAS DE FINAL")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking com estilo Neon Brasil!")
@@ -142,12 +172,9 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-# TRAVA ANTI-ERRO (KEYERROR) PARA HORÁRIO
+# TRAVAS ANTI-ERRO (KEYERROR E TYPEERROR)
 if "horário" not in df_jogos_sheet.columns:
     df_jogos_sheet["horário"] = ""
-
-# TRAVA ANTI-ERRO (TYPEERROR) PARA O ADMIN
-# Isso avisa ao Pandas que essas colunas podem receber textos (strings), evitando o crash na hora de gravar os resultados.
 df_jogos_sheet["passa"] = df_jogos_sheet["passa"].astype(object)
 df_jogos_sheet["encerrado"] = df_jogos_sheet["encerrado"].astype(object)
 
@@ -184,15 +211,16 @@ for _, row in df_jogos_sheet.iterrows():
         "horário": row.get("horário", "Horário a definir")
     }
 
+# --- LÓGICA DE PONTUAÇÃO IMPLACÁVEL (SÓ PLACAR EXATO GANHA) ---
 def calcular_pontos(jogo, palpite):
     try:
-        p1, p2, p_passa = int(palpite["p1"]), int(palpite["p2"]), palpite["passa"]
-        r1, r2, r_passa = jogo["gols1"], jogo["gols2"], jogo["passa"]
+        p1, p2 = int(palpite["p1"]), int(palpite["p2"])
+        r1, r2 = jogo["gols1"], jogo["gols2"]
+        
+        # Só ganha 5 pontos se o placar for perfeitamente igual ao resultado
         if p1 == r1 and p2 == r2:
-            if r1 == r2: return 5 if p_passa == r_passa else 3
             return 5
-        elif (p1 > p2 and r1 > r2) or (p1 < p2 and r1 < r2) or (p1 == p2 and r1 == r2):
-            return 2
+            
         return 0
     except:
         return 0
