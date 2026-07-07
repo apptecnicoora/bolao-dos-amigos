@@ -7,6 +7,7 @@ import json
 import urllib.request
 import urllib.parse
 import base64
+from datetime import datetime, timedelta, timezone
 
 # Configuração mobile-first
 st.set_page_config(page_title="Bolão das Quartas", page_icon="⚽", layout="centered")
@@ -18,12 +19,7 @@ st.markdown("""
     h1, h2, h3, h4, h5 { color: #009B3A !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
     h1, h2, h3, h4, h5, p, span, label, .stMarkdown { color: #ffffff !important; }
     
-    .main .block-container { 
-        max-width: 480px; 
-        padding-top: 1rem; 
-        padding-left: 0.8rem; 
-        padding-right: 0.8rem; 
-    }
+    .main .block-container { max-width: 480px; padding-top: 1rem; padding-left: 0.8rem; padding-right: 0.8rem; }
     
     [data-testid="stForm"], .stExpander {
         background-color: #161a22 !important;
@@ -119,11 +115,59 @@ st.markdown("""
         margin-left: auto;
         margin-right: auto;
     }
+    
+    .termometro {
+        font-size: 0.8rem;
+        text-align: center;
+        color: #8b949e;
+        margin-top: -5px;
+        margin-bottom: 15px;
+        background-color: #202632;
+        border-radius: 8px;
+        padding: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("⚽ BOLÃO ONLINE DAS QUARTAS")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking!")
+
+# --- UTILITÁRIO DE TEMPO E BLOQUEIO ---
+fuso_br = timezone(timedelta(hours=-3)) # Horário de Brasília/Teresina
+
+def jogo_ja_comecou(horario_str):
+    agora = datetime.now(fuso_br)
+    try:
+        # Formato esperado: "Qui., 09/07 17:00"
+        partes = horario_str.split(" ")
+        data_hora_str = f"{partes[1]} {partes[2]} {agora.year}"
+        hora_jogo = datetime.strptime(data_hora_str, "%d/%m %H:%M %Y")
+        hora_jogo = hora_jogo.replace(tzinfo=fuso_br)
+        return agora >= hora_jogo
+    except:
+        return False # Em caso de erro de formatação, libera a aposta
+
+# --- UTILITÁRIO DE TERMÔMETRO DAS APOSTAS ---
+def gerar_termometro(id_jogo, df_palpites, t1, t2):
+    palpites = df_palpites[df_palpites["jogo"] == id_jogo]
+    total = len(palpites)
+    if total == 0:
+        return f"<div class='termometro'>📊 Termômetro: Seja o primeiro a palpitar!</div>"
+    
+    v1, v2, emp = 0, 0, 0
+    for _, p in palpites.iterrows():
+        try:
+            g1, g2 = int(p["p1"]), int(p["p2"])
+            if g1 > g2: v1 += 1
+            elif g2 > g1: v2 += 1
+            else: emp += 1
+        except: pass
+        
+    pct1 = int((v1/total)*100)
+    pct2 = int((v2/total)*100)
+    pctE = int((emp/total)*100)
+    
+    return f"<div class='termometro'>📊 <b>Tendência:</b> {t1} {pct1}% | Empate {pctE}% | {t2} {pct2}%</div>"
 
 lista_avatares = [
     "⚽", "🏆", "🥇", "😎", "👑", "🔥", "⚡", "🌟", "🎯", "🦁", 
@@ -194,8 +238,7 @@ def ler_aba(nome_aba, colunas_padrao):
 
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
-if "horário" not in df_jogos_sheet.columns:
-    df_jogos_sheet["horário"] = ""
+if "horário" not in df_jogos_sheet.columns: df_jogos_sheet["horário"] = ""
 
 df_jogos_sheet["passa"] = df_jogos_sheet["passa"].astype(object)
 df_jogos_sheet["encerrado"] = df_jogos_sheet["encerrado"].astype(object)
@@ -220,7 +263,6 @@ if novos_jogos:
 
 dict_jogos = {}
 for _, row in df_jogos_sheet.iterrows():
-    # Carrega apenas os jogos com ID Q (Quartas)
     if str(row["id"]).startswith("Q"):
         dict_jogos[row["id"]] = {
             "time1": row["time1"], "flag1": row["flag1"],
@@ -277,97 +319,9 @@ with aba1:
             ("Sócrates (O Doutor)", "Sócrates_(futebolista)"),
             ("Marcelinho Carioca", "Marcelinho_Carioca"),
             ("Craque Neto", "Neto_(futebolista)"),
-            ("Rivellino", "Roberto_Rivellino"),
-            ("Paulinho", "Paulinho_(futebolista)"),
-            ("Renato Augusto", "Renato_Augusto"),
-            ("Paolo Guerrero", "Paolo_Guerrero"),
-            ("Dida", "Dida_(futebolista_nascido_em_1973)"),
-            ("Vampeta", "Vampeta"),
-            ("Edílson Capetinha", "Edílson"),
-            ("Carlos Tevez", "Carlos_Tevez"),
-            ("Zinedine Zidane", "Zinedine_Zidane"),
-            ("Romário", "Romário"),
             ("Zico", "Zico"),
-            ("Kaká", "Kaká"),
-            ("Kylian Mbappé", "Kylian_Mbappé"),
-            ("Erling Haaland", "Erling_Haaland"),
-            ("Kevin De Bruyne", "Kevin_De_Bruyne"),
-            ("Robert Lewandowski", "Robert_Lewandowski"),
-            ("Zlatan Ibrahimović", "Zlatan_Ibrahimović"),
-            ("Gianluigi Buffon", "Gianluigi_Buffon"),
-            ("Roberto Carlos", "Roberto_Carlos"),
-            ("Johan Cruyff", "Johan_Cruyff"),
-            ("Franz Beckenbauer", "Franz_Beckenbauer"),
-            ("Michel Platini", "Michel_Platini"),
-            ("Thierry Henry", "Thierry_Henry"),
-            ("Andrés Iniesta", "Andrés_Iniesta"),
-            ("Xavi", "Xavi"),
-            ("Sergio Ramos", "Sergio_Ramos"),
-            ("Iker Casillas", "Iker_Casillas"),
-            ("Luka Modrić", "Luka_Modrić"),
-            ("Karim Benzema", "Karim_Benzema"),
-            ("Luis Suárez", "Luis_Suárez"),
-            ("Gareth Bale", "Gareth_Bale"),
-            ("Wayne Rooney", "Wayne_Rooney"),
-            ("Ryan Giggs", "Ryan_Giggs"),
-            ("Paul Scholes", "Paul_Scholes"),
-            ("Steven Gerrard", "Steven_Gerrard"),
-            ("Frank Lampard", "Frank_Lampard"),
-            ("Didier Drogba", "Didier_Drogba"),
-            ("Samuel Eto'o", "Samuel_Eto'o"),
-            ("Yaya Touré", "Yaya_Touré"),
-            ("Mohamed Salah", "Mohamed_Salah"),
-            ("Sadio Mané", "Sadio_Mané"),
-            ("Riyad Mahrez", "Riyad_Mahrez"),
-            ("George Weah", "George_Weah"),
-            ("Eusébio", "Eusébio"),
-            ("Lev Yashin", "Lev_Yashin"),
-            ("Ferenc Puskás", "Ferenc_Puskás"),
-            ("Alfredo Di Stéfano", "Alfredo_Di_Stéfano"),
-            ("Garrincha", "Garrincha"),
-            ("Jairzinho", "Jairzinho"),
-            ("Tostão", "Tostão"),
-            ("Gérson", "Gérson"),
-            ("Carlos Alberto Torres", "Carlos_Alberto_Torres"),
-            ("Cafu", "Cafu"),
-            ("Rivaldo", "Rivaldo"),
-            ("Bebeto", "Bebeto"),
-            ("Cláudio Taffarel", "Cláudio_Taffarel"),
-            ("Marcos (Goleiro)", "Marcos_(futebolista)"),
-            ("Rogério Ceni", "Rogério_Ceni"),
-            ("Alisson Becker", "Alisson_Becker"),
-            ("Ederson Moraes", "Ederson_Moraes"),
-            ("Virgil van Dijk", "Virgil_van_Dijk"),
-            ("Trent Alexander-Arnold", "Trent_Alexander-Arnold"),
-            ("Alphonso Davies", "Alphonso_Davies"),
-            ("Achraf Hakimi", "Achraf_Hakimi"),
-            ("N'Golo Kanté", "N'Golo_Kanté"),
-            ("Casemiro", "Casemiro"),
-            ("Toni Kroos", "Toni_Kroos"),
-            ("Sergio Busquets", "Sergio_Busquets"),
-            ("Pedri", "Pedri"),
-            ("Jude Bellingham", "Jude_Bellingham"),
-            ("Vinícius Júnior", "Vinícius_Júnior"),
-            ("Rodrygo", "Rodrygo"),
-            ("Phil Foden", "Phil_Foden"),
-            ("Bukayo Saka", "Bukayo_Saka"),
-            ("Harry Kane", "Harry_Kane"),
-            ("Son Heung-min", "Son_Heung-min"),
-            ("Antoine Griezmann", "Antoine_Griezmann"),
-            ("Olivier Giroud", "Olivier_Giroud"),
-            ("Hugo Lloris", "Hugo_Lloris"),
-            ("Manuel Neuer", "Manuel_Neuer"),
-            ("Thomas Müller", "Thomas_Müller"),
-            ("Joshua Kimmich", "Joshua_Kimmich"),
-            ("Jamal Musiala", "Jamal_Musiala"),
-            ("Leroy Sané", "Leroy_Sané"),
-            ("Serge Gnabry", "Serge_Gnabry"),
-            ("İlkay Gündoğan", "İlkay_Gündoğan"),
-            ("Christian Pulisic", "Christian_Pulisic"),
-            ("Keylor Navas", "Keylor_Navas"),
-            ("Roberto Baggio", "Roberto_Baggio")
+            ("Romário", "Romário")
         ]
-        
         nome_sorteado, titulo_wiki = random.choice(jogadores)
         
         with st.spinner("Puxando foto oficial..."):
@@ -380,32 +334,39 @@ with aba1:
 
     st.header("🏆 Classificação Geral (Quartas)")
     pontos_totais = {}
+    cravadas_totais = {}
     
     for _, p in df_palpites.iterrows():
-        # Filtra para somar apenas os jogos das quartas (iniciados com Q)
         if str(p["jogo"]).startswith("Q"):
             nome = p["nome"]
             pontos_totais[nome] = pontos_totais.get(nome, 0)
+            cravadas_totais[nome] = cravadas_totais.get(nome, 0)
             jogo = dict_jogos.get(p["jogo"])
+            
             if jogo and jogo["encerrado"]:
-                pontos_totais[nome] += calcular_pontos(jogo, p)
+                pontos = calcular_pontos(jogo, p)
+                pontos_totais[nome] += pontos
+                if pontos == 5:
+                    cravadas_totais[nome] += 1
             
     if pontos_totais:
         dados_ranking = []
         for n, pts in pontos_totais.items():
             user_row = df_usuarios[df_usuarios["nome"] == n]
             avatar = user_row["avatar"].values[0] if not user_row.empty else "👤"
-            dados_ranking.append({"Participante": f"{avatar} {n}", "Pontos": pts, "p_nome": n, "p_avatar": avatar})
+            cravadas = cravadas_totais[n]
+            dados_ranking.append({"Participante": f"{avatar} {n}", "Pontos": pts, "Cravadas": cravadas, "p_nome": n, "p_avatar": avatar})
             
-        df_ranking = pd.DataFrame(dados_ranking).sort_values(by="Pontos", ascending=False).reset_index(drop=True)
+        # ORDENA POR PONTOS E DEPOIS POR CRAVADAS (Critério de desempate)
+        df_ranking = pd.DataFrame(dados_ranking).sort_values(by=["Pontos", "Cravadas"], ascending=[False, False]).reset_index(drop=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         for idx, row in df_ranking.iterrows():
             pos = idx + 1
             if pos == 1:
-                st.markdown(f"<div class='top1-glow'>👑 1º LUGAR<br><span style='font-size: 2rem;'>{row['p_avatar']} <b>{row['p_nome']}</b></span><br>{row['Pontos']} pts</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='top1-glow'>👑 1º LUGAR<br><span style='font-size: 2rem;'>{row['p_avatar']} <b>{row['p_nome']}</b></span><br>{row['Pontos']} pts <br><span style='font-size: 0.9rem; color: #FFDF00;'>({row['Cravadas']} Cravadas)</span></div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b> <span style='color: #8b949e; font-size: 0.8rem;'>({row['Cravadas']} cravadas)</span></div>", unsafe_allow_html=True)
         
         st.divider()
         st.subheader("📲 Enviar Placar para o WhatsApp")
@@ -451,9 +412,16 @@ with aba1:
 # --- ABA 2: DAR PALPITE ---
 with aba2:
     st.header("✍️ Dar Palpite")
-    nome_usuario = st.text_input("Seu Nome/Apelido:", key="user_nome").strip().title()
+    
+    # MEMÓRIA DE SESSÃO (Para não precisar digitar o nome toda hora)
+    if "nome_salvo" not in st.session_state:
+        st.session_state.nome_salvo = ""
+        
+    nome_usuario = st.text_input("Seu Nome/Apelido:", value=st.session_state.nome_salvo, key="user_nome").strip().title()
     
     if nome_usuario:
+        st.session_state.nome_salvo = nome_usuario
+        
         user_row = df_usuarios[df_usuarios["nome"] == nome_usuario]
         avatar_atual = user_row["avatar"].values[0] if not user_row.empty else lista_avatares[0]
         avatar_escolhido = st.selectbox("Escolha seu Avatar:", lista_avatares, index=lista_avatares.index(avatar_atual))
@@ -465,8 +433,7 @@ with aba2:
                 nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
                 df_usuarios_safe = pd.concat([df_usuarios_safe, nova_linha], ignore_index=True)
                 conn.update(worksheet="Usuarios", data=df_usuarios_safe)
-            except:
-                st.error("Erro ao conectar no banco para salvar usuário. Tente novamente.")
+            except: pass
             st.cache_data.clear()
             st.rerun()
             
@@ -476,8 +443,7 @@ with aba2:
                 df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
                 df_usuarios_safe.loc[df_usuarios_safe["nome"] == nome_usuario, "avatar"] = avatar_escolhido
                 conn.update(worksheet="Usuarios", data=df_usuarios_safe)
-            except:
-                st.error("Erro ao conectar no banco para atualizar avatar.")
+            except: pass
             st.cache_data.clear()
             st.rerun()
             
@@ -487,9 +453,12 @@ with aba2:
         for id_jogo, j in dict_jogos.items():
             if j["encerrado"]: continue
             
-            with st.form(key=f"form_{id_jogo}"):
-                # DATA E HORA EM CIMA
+            with st.form(key=f"form_{id_jogo}", clear_on_submit=True):
                 st.markdown(f'<p style="text-align: center; color: #FFDF00 !important; font-size: 1.1rem; font-weight: bold; margin-bottom: 0px;">📅 {j["horário"]}</p>', unsafe_allow_html=True)
+                
+                # GRÁFICO TERMÔMETRO DE APOSTAS
+                st.markdown(gerar_termometro(id_jogo, df_palpites, j["time1"], j["time2"]), unsafe_allow_html=True)
+                
                 st.markdown(f'<h4 style="text-align: center; color: #ffffff !important; margin-top: 5px;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
                 
                 cor_t1 = cores_paises.get(j["time1"], "#009B3A")
@@ -510,10 +479,17 @@ with aba2:
                 st.caption("Pênaltis (Marque apenas se o seu placar for um empate):")
                 opcao_sem_penalti = "Sem Pênaltis (Não empatou)"
                 passa = st.selectbox("", [opcao_sem_penalti, j['time1'], j['time2']], label_visibility="collapsed")
-                    
-                submit_palpite = st.form_submit_button("Gravar Palpite", type="primary", use_container_width=True)
                 
-                if submit_palpite:
+                # BLOQUEIO AUTOMÁTICO DE HORÁRIO
+                bloqueado = jogo_ja_comecou(j["horário"])
+                
+                if bloqueado:
+                    st.warning("⚠️ O horário deste jogo já passou! Apostas encerradas.")
+                    submit_palpite = st.form_submit_button("Apostas Encerradas", disabled=True, use_container_width=True)
+                else:
+                    submit_palpite = st.form_submit_button("Gravar Palpite", type="primary", use_container_width=True)
+                
+                if submit_palpite and not bloqueado:
                     if p1 == p2 and passa == opcao_sem_penalti:
                         st.error("⚠️ Você colocou um empate! Escolha quem vence nos pênaltis antes de gravar.")
                     elif p1 != p2 and passa != opcao_sem_penalti:
@@ -538,8 +514,10 @@ with aba2:
                         
                         conn.update(worksheet="Palpites", data=df_palpites_safe)
                         st.cache_data.clear()
-                        st.success("Gravado com sucesso no sistema!")
-                        st.rerun() 
+                        
+                        # FESTA VISUAL COM BALÕES
+                        st.balloons()
+                        st.success(f"Palpite gravado com sucesso! Pode passar para o próximo.")
             st.markdown("<br>", unsafe_allow_html=True)
             
         palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
