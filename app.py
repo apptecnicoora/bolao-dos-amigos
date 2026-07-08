@@ -133,19 +133,18 @@ st.title("⚽ BOLÃO ONLINE DAS QUARTAS")
 st.markdown("Confira os horários dos jogos, dê seus palpites e acompanhe o Ranking!")
 
 # --- UTILITÁRIO DE TEMPO E BLOQUEIO ---
-fuso_br = timezone(timedelta(hours=-3)) # Horário de Brasília/Teresina
+fuso_br = timezone(timedelta(hours=-3)) 
 
 def jogo_ja_comecou(horario_str):
     agora = datetime.now(fuso_br)
     try:
-        # Formato esperado: "Qui., 09/07 17:00"
         partes = horario_str.split(" ")
         data_hora_str = f"{partes[1]} {partes[2]} {agora.year}"
         hora_jogo = datetime.strptime(data_hora_str, "%d/%m %H:%M %Y")
         hora_jogo = hora_jogo.replace(tzinfo=fuso_br)
         return agora >= hora_jogo
     except:
-        return False # Em caso de erro de formatação, libera a aposta
+        return False 
 
 # --- UTILITÁRIO DE TERMÔMETRO DAS APOSTAS ---
 def gerar_termometro(id_jogo, df_palpites, t1, t2):
@@ -190,14 +189,14 @@ bandeiras_emoji = {
     "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
 }
 
-# --- FUNÇÃO PARA LER A IMAGEM LOCAL DO GITHUB ---
+@st.cache_data(ttl=3600)
 def obter_imagem_local_base64(caminho_arquivo):
     if os.path.exists(caminho_arquivo):
         with open(caminho_arquivo, "rb") as arquivo_imagem:
             return base64.b64encode(arquivo_imagem.read()).decode()
     return None
 
-# --- MOTOR DE BUSCA DA WIKIPEDIA (BLINDADO) ---
+@st.cache_data(ttl=3600)
 def buscar_imagem_wikipedia(nome_artigo):
     try:
         nome_codificado = urllib.parse.quote(nome_artigo.replace(' ', '_'))
@@ -239,14 +238,12 @@ def ler_aba(nome_aba, colunas_padrao):
 df_jogos_sheet = ler_aba("Jogos", ["id", "time1", "flag1", "time2", "flag2", "gols1", "gols2", "passa", "encerrado", "horário"])
 
 if "horário" not in df_jogos_sheet.columns: df_jogos_sheet["horário"] = ""
-
 df_jogos_sheet["passa"] = df_jogos_sheet["passa"].astype(object)
 df_jogos_sheet["encerrado"] = df_jogos_sheet["encerrado"].astype(object)
 
 df_palpites = ler_aba("Palpites", ["nome", "jogo", "p1", "p2", "passa"])
 df_usuarios = ler_aba("Usuarios", ["nome", "avatar"])
 
-# --- JOGOS DAS QUARTAS DE FINAL ---
 jogos_iniciais = [
     {"id": "Q1", "time1": "França", "flag1": "https://flagcdn.com/w160/fr.png", "time2": "Marrocos", "flag2": "https://flagcdn.com/w160/ma.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Qui., 09/07 17:00"},
     {"id": "Q2", "time1": "Espanha", "flag1": "https://flagcdn.com/w160/es.png", "time2": "Bélgica", "flag2": "https://flagcdn.com/w160/be.png", "gols1": 0, "gols2": 0, "passa": "", "encerrado": "Não", "horário": "Sex., 10/07 16:00"},
@@ -274,7 +271,6 @@ for _, row in df_jogos_sheet.iterrows():
             "horário": row.get("horário", "Horário a definir")
         }
 
-# --- REGRA HARDCORE: APENAS PLACAR EXATO GANHA 5 PONTOS ---
 def calcular_pontos(jogo, palpite):
     try:
         p1, p2 = int(palpite["p1"]), int(palpite["p2"])
@@ -287,54 +283,31 @@ aba1, aba2, aba3 = st.tabs(["📊 Ranking", "✍️ Palpitar", "⚙️ Admin"])
 
 # --- ABA 1: RANKING E SORTEIO DO JOGADOR ---
 with aba1:
-    
     imagem_base64 = obter_imagem_local_base64("ronaldinho.gif")
     if imagem_base64:
-        st.markdown(f"""
-        <div style='text-align: center;'>
-            <img src="data:image/gif;base64,{imagem_base64}" class="imagem-topo-app" alt="Ronaldinho Dançando">
-        </div>
-        """, unsafe_allow_html=True)
-    elif os.path.exists("ronaldinho.png"):
-        st.image("ronaldinho.png", use_container_width=True)
-    elif os.path.exists("ronaldinho.jpg"):
-        st.image("ronaldinho.jpg", use_container_width=True)
-    else:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg", use_container_width=True)
+        st.markdown(f"<div style='text-align: center;'><img src='data:image/gif;base64,{imagem_base64}' class='imagem-topo-app'></div>", unsafe_allow_html=True)
+    elif os.path.exists("ronaldinho.png"): st.image("ronaldinho.png", use_container_width=True)
+    elif os.path.exists("ronaldinho.jpg"): st.image("ronaldinho.jpg", use_container_width=True)
+    else: st.image("https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg", use_container_width=True)
     
     st.markdown("<div class='player-draw-box'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ffffff; margin-top: 0;'>🎲 Qual Jogador Você é Hoje?</h3>", unsafe_allow_html=True)
-    st.write("Aperte o botão para descobrir sua energia para os palpites!")
     
     if st.button("SORTEAR MEU JOGADOR", use_container_width=True):
         jogadores = [
-            ("Ronaldinho Gaúcho (O Bruxo)", "Ronaldinho_Gaúcho"),
-            ("Cássio (O Paredão)", "Cássio_Ramos"),
-            ("Neymar Jr", "Neymar"),
-            ("Cristiano Ronaldo", "Cristiano_Ronaldo"),
-            ("Lionel Messi", "Lionel_Messi"),
-            ("Pelé (O Rei)", "Pelé"),
-            ("Diego Maradona", "Diego_Maradona"),
-            ("Ronaldo Fenômeno", "Ronaldo_Nazário"),
-            ("Sócrates (O Doutor)", "Sócrates_(futebolista)"),
-            ("Marcelinho Carioca", "Marcelinho_Carioca"),
-            ("Craque Neto", "Neto_(futebolista)"),
-            ("Zico", "Zico"),
-            ("Romário", "Romário")
+            ("Ronaldinho Gaúcho", "Ronaldinho_Gaúcho"), ("Cássio", "Cássio_Ramos"), 
+            ("Neymar Jr", "Neymar"), ("Cristiano Ronaldo", "Cristiano_Ronaldo"), 
+            ("Lionel Messi", "Lionel_Messi"), ("Pelé", "Pelé"), 
+            ("Marcelinho Carioca", "Marcelinho_Carioca"), ("Sócrates", "Sócrates_(futebolista)")
         ]
         nome_sorteado, titulo_wiki = random.choice(jogadores)
-        
-        with st.spinner("Puxando foto oficial..."):
-            imagem_sorteada = buscar_imagem_wikipedia(titulo_wiki)
-        
+        imagem_sorteada = buscar_imagem_wikipedia(titulo_wiki)
         st.success(f"Você tirou: **{nome_sorteado}**")
         st.markdown(f"<img src='{imagem_sorteada}' class='imagem-jogador'>", unsafe_allow_html=True)
-        
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.header("🏆 Classificação Geral (Quartas)")
-    pontos_totais = {}
-    cravadas_totais = {}
+    pontos_totais, cravadas_totais = {}, {}
     
     for _, p in df_palpites.iterrows():
         if str(p["jogo"]).startswith("Q"):
@@ -342,110 +315,79 @@ with aba1:
             pontos_totais[nome] = pontos_totais.get(nome, 0)
             cravadas_totais[nome] = cravadas_totais.get(nome, 0)
             jogo = dict_jogos.get(p["jogo"])
-            
             if jogo and jogo["encerrado"]:
                 pontos = calcular_pontos(jogo, p)
                 pontos_totais[nome] += pontos
-                if pontos == 5:
-                    cravadas_totais[nome] += 1
+                if pontos == 5: cravadas_totais[nome] += 1
             
     if pontos_totais:
         dados_ranking = []
         for n, pts in pontos_totais.items():
             user_row = df_usuarios[df_usuarios["nome"] == n]
             avatar = user_row["avatar"].values[0] if not user_row.empty else "👤"
-            cravadas = cravadas_totais[n]
-            dados_ranking.append({"Participante": f"{avatar} {n}", "Pontos": pts, "Cravadas": cravadas, "p_nome": n, "p_avatar": avatar})
+            dados_ranking.append({"Participante": f"{avatar} {n}", "Pontos": pts, "Cravadas": cravadas_totais[n], "p_nome": n, "p_avatar": avatar})
             
-        # ORDENA POR PONTOS E DEPOIS POR CRAVADAS (Critério de desempate)
         df_ranking = pd.DataFrame(dados_ranking).sort_values(by=["Pontos", "Cravadas"], ascending=[False, False]).reset_index(drop=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
         for idx, row in df_ranking.iterrows():
             pos = idx + 1
             if pos == 1:
                 st.markdown(f"<div class='top1-glow'>👑 1º LUGAR<br><span style='font-size: 2rem;'>{row['p_avatar']} <b>{row['p_nome']}</b></span><br>{row['Pontos']} pts <br><span style='font-size: 0.9rem; color: #FFDF00;'>({row['Cravadas']} Cravadas)</span></div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b> <span style='color: #8b949e; font-size: 0.8rem;'>({row['Cravadas']} cravadas)</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ranking-normal'><b>{pos}º</b> {row['p_avatar']} {row['p_nome']} — <b>{row['Pontos']} pts</b></div>", unsafe_allow_html=True)
         
-        st.divider()
-        st.subheader("📲 Enviar Placar para o WhatsApp")
-        texto_whatsapp = "🏆 *CLASSIFICAÇÃO DO BOLÃO (QUARTAS)* 🏆\n\n"
-        for idx, row in df_ranking.iterrows():
-            texto_whatsapp += f"{idx+1}º {row['p_avatar']} *{row['p_nome']}* — {row['Pontos']} pts\n"
-        st.code(texto_whatsapp, language="text")
-
         st.divider()
         st.subheader("👀 Espiar Adversários")
-        st.caption("Clique no nome do participante abaixo para ver os palpites dele.")
-        
         usuarios_com_palpite = df_palpites[df_palpites["jogo"].str.startswith("Q")]["nome"].unique()
         for nome_participante in usuarios_com_palpite:
             user_info = df_usuarios[df_usuarios["nome"] == nome_participante]
             avatar_part = user_info["avatar"].values[0] if not user_info.empty else "👤"
-            
             with st.expander(f"{avatar_part} {nome_participante}"):
                 palpites_do_cara = df_palpites[df_palpites["nome"] == nome_participante]
-                
                 texto_palpites = f"📝 *PALPITES - QUARTAS* 📝\n\n"
-                
                 for id_jogo, j in dict_jogos.items():
                     p_jogo = palpites_do_cara[palpites_do_cara["jogo"] == id_jogo]
-                    f1 = bandeiras_emoji.get(j["time1"], "⚽")
-                    f2 = bandeiras_emoji.get(j["time2"], "⚽")
-                    
                     if not p_jogo.empty:
-                        val_p1 = int(p_jogo.iloc[0]["p1"])
-                        val_p2 = int(p_jogo.iloc[0]["p2"])
-                        val_passa = p_jogo.iloc[0]["passa"]
-                        
-                        texto_palpites += f"{f1} {j['time1']} {val_p1} x {val_p2} {j['time2']} {f2}"
-                        if val_p1 == val_p2 and val_passa:
-                            texto_palpites += f" (Pênaltis: {val_passa})"
+                        val_p1, val_p2, val_passa = int(p_jogo.iloc[0]["p1"]), int(p_jogo.iloc[0]["p2"]), p_jogo.iloc[0]["passa"]
+                        texto_palpites += f"{j['time1']} {val_p1} x {val_p2} {j['time2']}"
+                        if val_p1 == val_p2 and val_passa: texto_palpites += f" (Pênaltis: {val_passa})"
                         texto_palpites += "\n"
-                
                 st.code(texto_palpites, language="text")
-                
     else:
-        st.info("Aguardando palpites e resultados da fase de Quartas!")
+        st.info("Aguardando resultados da fase de Quartas!")
 
 # --- ABA 2: DAR PALPITE ---
 with aba2:
     st.header("✍️ Dar Palpite")
     
-    # MEMÓRIA DE SESSÃO (Para não precisar digitar o nome toda hora)
-    if "nome_salvo" not in st.session_state:
-        st.session_state.nome_salvo = ""
-        
+    if "nome_salvo" not in st.session_state: st.session_state.nome_salvo = ""
     nome_usuario = st.text_input("Seu Nome/Apelido:", value=st.session_state.nome_salvo, key="user_nome").strip().title()
     
     if nome_usuario:
         st.session_state.nome_salvo = nome_usuario
-        
         user_row = df_usuarios[df_usuarios["nome"] == nome_usuario]
         avatar_atual = user_row["avatar"].values[0] if not user_row.empty else lista_avatares[0]
-        avatar_escolhido = st.selectbox("Escolha seu Avatar:", lista_avatares, index=lista_avatares.index(avatar_atual))
         
-        if user_row.empty:
-            st.cache_data.clear()
-            try:
-                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
-                nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
-                df_usuarios_safe = pd.concat([df_usuarios_safe, nova_linha], ignore_index=True)
-                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
-            except: pass
-            st.cache_data.clear()
-            st.rerun()
-            
-        elif avatar_atual != avatar_escolhido:
-            st.cache_data.clear()
-            try:
-                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
-                df_usuarios_safe.loc[df_usuarios_safe["nome"] == nome_usuario, "avatar"] = avatar_escolhido
-                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
-            except: pass
-            st.cache_data.clear()
-            st.rerun()
+        # Formulário para salvar avatar sem dar refresh doido na tela
+        with st.form("form_avatar"):
+            c1, c2 = st.columns([3, 1])
+            with c1: avatar_escolhido = st.selectbox("Escolha seu Avatar:", lista_avatares, index=lista_avatares.index(avatar_atual))
+            with c2: 
+                st.markdown("<br>", unsafe_allow_html=True)
+                salvar_avatar = st.form_submit_button("Salvar")
+                
+            if salvar_avatar:
+                try:
+                    df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
+                    if nome_usuario not in df_usuarios_safe["nome"].values:
+                        nova_linha = pd.DataFrame([{"nome": nome_usuario, "avatar": avatar_escolhido}])
+                        df_usuarios_safe = pd.concat([df_usuarios_safe, nova_linha], ignore_index=True)
+                    else:
+                        df_usuarios_safe.loc[df_usuarios_safe["nome"] == nome_usuario, "avatar"] = avatar_escolhido
+                    conn.update(worksheet="Usuarios", data=df_usuarios_safe)
+                    st.cache_data.clear()
+                    st.success("Avatar salvo!")
+                except: pass
             
         st.markdown(f'<div class="avatar-grande-display">{avatar_escolhido}</div>', unsafe_allow_html=True)
         st.divider()
@@ -453,25 +395,12 @@ with aba2:
         for id_jogo, j in dict_jogos.items():
             if j["encerrado"]: continue
             
-            with st.form(key=f"form_{id_jogo}", clear_on_submit=True):
+            # REMOVIDO: clear_on_submit=True (Para não apagar os dados se o usuário esquecer o penalti)
+            with st.form(key=f"form_{id_jogo}"):
                 st.markdown(f'<p style="text-align: center; color: #FFDF00 !important; font-size: 1.1rem; font-weight: bold; margin-bottom: 0px;">📅 {j["horário"]}</p>', unsafe_allow_html=True)
-                
-                # GRÁFICO TERMÔMETRO DE APOSTAS
                 st.markdown(gerar_termometro(id_jogo, df_palpites, j["time1"], j["time2"]), unsafe_allow_html=True)
-                
                 st.markdown(f'<h4 style="text-align: center; color: #ffffff !important; margin-top: 5px;">{j["time1"]} x {j["time2"]}</h4>', unsafe_allow_html=True)
                 
-                cor_t1 = cores_paises.get(j["time1"], "#009B3A")
-                cor_t2 = cores_paises.get(j["time2"], "#009B3A")
-                
-                col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
-                with col_t1: 
-                    st.markdown(f"<div style='text-align: right;'><img src='{j['flag1']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t1};'></div>", unsafe_allow_html=True)
-                with col_vs: 
-                    st.markdown("<h3 style='text-align: center; margin-top: 15px;'>VS</h3>", unsafe_allow_html=True)
-                with col_t2: 
-                    st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='80' style='border-radius: 8px; box-shadow: 0 0 18px {cor_t2};'></div>", unsafe_allow_html=True)
-                    
                 c1, c2 = st.columns(2)
                 with c1: p1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1)
                 with c2: p2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1)
@@ -480,12 +409,9 @@ with aba2:
                 opcao_sem_penalti = "Sem Pênaltis (Não empatou)"
                 passa = st.selectbox("", [opcao_sem_penalti, j['time1'], j['time2']], label_visibility="collapsed")
                 
-                # BLOQUEIO AUTOMÁTICO DE HORÁRIO
                 bloqueado = jogo_ja_comecou(j["horário"])
-                
                 if bloqueado:
-                    st.warning("⚠️ O horário deste jogo já passou! Apostas encerradas.")
-                    submit_palpite = st.form_submit_button("Apostas Encerradas", disabled=True, use_container_width=True)
+                    submit_palpite = st.form_submit_button("Apostas Encerradas (Horário passou)", disabled=True, use_container_width=True)
                 else:
                     submit_palpite = st.form_submit_button("Gravar Palpite", type="primary", use_container_width=True)
                 
@@ -493,55 +419,23 @@ with aba2:
                     if p1 == p2 and passa == opcao_sem_penalti:
                         st.error("⚠️ Você colocou um empate! Escolha quem vence nos pênaltis antes de gravar.")
                     elif p1 != p2 and passa != opcao_sem_penalti:
-                        st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis' para poder gravar.")
+                        st.error("⚠️ O jogo não empatou. Marque 'Sem Pênaltis'.")
                     else:
                         st.cache_data.clear()
                         try:
                             df_palpites_safe = conn.read(worksheet="Palpites", ttl=0)
-                        except Exception as e:
-                            st.error("Falha na conexão com o banco. O palpite NÃO foi gravado para proteger os dados. Tente novamente.")
-                            st.stop()
-                            
-                        if df_palpites_safe.empty:
-                            df_palpites_safe = pd.DataFrame(columns=["nome", "jogo", "p1", "p2", "passa"])
-                            
-                        df_palpites_safe = df_palpites_safe[~((df_palpites_safe["nome"] == nome_usuario) & (df_palpites_safe["jogo"] == id_jogo))]
-                        
-                        passa_final = passa if passa != opcao_sem_penalti else ""
-                        novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
-                        
-                        df_palpites_safe = pd.concat([df_palpites_safe, novo_p], ignore_index=True)
-                        
-                        conn.update(worksheet="Palpites", data=df_palpites_safe)
-                        st.cache_data.clear()
-                        
-                        # FESTA VISUAL COM BALÕES
-                        st.balloons()
-                        st.success(f"Palpite gravado com sucesso! Pode passar para o próximo.")
+                            if df_palpites_safe.empty: df_palpites_safe = pd.DataFrame(columns=["nome", "jogo", "p1", "p2", "passa"])
+                            df_palpites_safe = df_palpites_safe[~((df_palpites_safe["nome"] == nome_usuario) & (df_palpites_safe["jogo"] == id_jogo))]
+                            passa_final = passa if passa != opcao_sem_penalti else ""
+                            novo_p = pd.DataFrame([{"nome": nome_usuario, "jogo": id_jogo, "p1": p1, "p2": p2, "passa": passa_final}])
+                            df_palpites_safe = pd.concat([df_palpites_safe, novo_p], ignore_index=True)
+                            conn.update(worksheet="Palpites", data=df_palpites_safe)
+                            st.cache_data.clear()
+                            st.balloons()
+                            st.success("✅ Palpite gravado no banco de dados!")
+                        except:
+                            st.error("Falha na conexão com o banco. Tente novamente.")
             st.markdown("<br>", unsafe_allow_html=True)
-            
-        palpites_usuario = df_palpites[df_palpites["nome"] == nome_usuario]
-        if not palpites_usuario.empty:
-            st.subheader("📲 Meus Palpites para o WhatsApp")
-            texto_meus_palpites = f"📝 *MEUS PALPITES - QUARTAS* 📝\n"
-            texto_meus_palpites += f"👤 *Participante:* {avatar_escolhido} *{nome_usuario}*\n\n"
-            
-            for id_jogo, j in dict_jogos.items():
-                p_jogo = palpites_usuario[palpites_usuario["jogo"] == id_jogo]
-                f1 = bandeiras_emoji.get(j["time1"], "⚽")
-                f2 = bandeiras_emoji.get(j["time2"], "⚽")
-                if not p_jogo.empty:
-                    val_p1 = int(p_jogo.iloc[0]["p1"])
-                    val_p2 = int(p_jogo.iloc[0]["p2"])
-                    val_passa = p_jogo.iloc[0]["passa"]
-                    
-                    texto_meus_palpites += f"{f1} {j['time1']} {val_p1} x {val_p2} {j['time2']} {f2}"
-                    if val_p1 == val_p2 and val_passa:
-                        texto_meus_palpites += f" (Pênaltis: {val_passa})"
-                    texto_meus_palpites += "\n"
-            
-            texto_meus_palpites += "\n👉 *Deixe os seus palpites também pelo link!*"
-            st.code(texto_meus_palpites, language="text")
     else:
         st.info("Digite o seu nome para exibir os confrontos.")
 
@@ -549,62 +443,30 @@ with aba2:
 with aba3:
     st.header("⚙️ Painel Administrador")
     
-    st.subheader("🗑️ Remover Usuário")
-    lista_nomes = df_usuarios["nome"].tolist()
-    if lista_nomes:
-        usuario_remover = st.selectbox("Selecione um participante para expulsar do bolão:", lista_nomes)
-        if st.button("Apagar Usuário e Palpites", type="primary"):
-            st.cache_data.clear()
-            try:
-                df_usuarios_safe = conn.read(worksheet="Usuarios", ttl=0)
-                df_palpites_safe = conn.read(worksheet="Palpites", ttl=0)
-                
-                df_usuarios_safe = df_usuarios_safe[df_usuarios_safe["nome"] != usuario_remover]
-                df_palpites_safe = df_palpites_safe[df_palpites_safe["nome"] != usuario_remover]
-                
-                conn.update(worksheet="Usuarios", data=df_usuarios_safe)
-                conn.update(worksheet="Palpites", data=df_palpites_safe)
-                st.cache_data.clear()
-                st.success(f"Usuário {usuario_remover} removido com sucesso!")
-                st.rerun()
-            except:
-                st.error("Erro de conexão ao tentar apagar usuário.")
-        
-    st.divider()
-    
     st.subheader("📝 Lançar Resultados Reais")
     for id_jogo, j in dict_jogos.items():
         with st.form(key=f"adm_form_{id_jogo}"):
-            st.markdown(f'<p style="text-align: left; color: #FFDF00 !important; font-size: 0.9rem; font-weight: bold; margin-bottom: 0px;">📅 {j["horário"]}</p>', unsafe_allow_html=True)
             st.markdown(f"**{j['time1']} x {j['time2']}**")
             c1, c2 = st.columns(2)
             with c1: g1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1, value=j["gols1"])
             with c2: g2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1, value=j["gols2"])
                 
             opcao_sem_penalti_adm = "Sem Pênaltis"
-            st.caption("Pênaltis:")
-            passa_real = st.selectbox("", [opcao_sem_penalti_adm, j['time1'], j['time2']], label_visibility="collapsed")
-                
+            passa_real = st.selectbox("Pênaltis:", [opcao_sem_penalti_adm, j['time1'], j['time2']])
             encerrar = st.checkbox("Encerrar jogo e travar palpites", value=j["encerrado"])
-            
             submit_adm = st.form_submit_button("Gravar Placar Oficial", use_container_width=True)
             
             if submit_adm:
                 st.cache_data.clear()
                 try:
                     df_jogos_safe = conn.read(worksheet="Jogos", ttl=0)
+                    passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
+                    df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols1"] = g1
+                    df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols2"] = g2
+                    df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "passa"] = passa_final_adm
+                    df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "encerrado"] = "Sim" if encerrar else "Não"
+                    conn.update(worksheet="Jogos", data=df_jogos_safe)
+                    st.cache_data.clear()
+                    st.success("Placar atualizado!")
                 except:
                     st.error("Erro na leitura do banco. Placar NÃO foi gravado. Tente novamente.")
-                    st.stop()
-                    
-                passa_final_adm = passa_real if passa_real != opcao_sem_penalti_adm else ""
-                
-                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols1"] = g1
-                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "gols2"] = g2
-                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "passa"] = passa_final_adm
-                df_jogos_safe.loc[df_jogos_safe["id"] == id_jogo, "encerrado"] = "Sim" if encerrar else "Não"
-                
-                conn.update(worksheet="Jogos", data=df_jogos_safe)
-                st.cache_data.clear()
-                st.success("Placar oficial atualizado com sucesso!")
-                st.rerun()
