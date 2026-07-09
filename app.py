@@ -4,6 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 import random
 import os
 import base64
+import time
 from datetime import datetime, timezone, timedelta
 
 # Configuração da página - Otimizada para Celular
@@ -208,6 +209,38 @@ if st.session_state.pagina == "📊 Ranking":
                 st.markdown(f"<div class='ranking-normal'><b>{idx+1}º</b> {row['Avatar']} {row['Nome']} — <b>{row['Pontos']} pts</b> <span style='font-size:0.8rem; color:#8b949e;'>({row['Cravadas']} cr)</span></div>", unsafe_allow_html=True)
     else:
         st.info("Nenhum resultado computado ainda para as Quartas.")
+        
+    # --- VOLTOU: ESPIAR ADVERSÁRIOS ---
+    st.divider()
+    st.subheader("👀 Espiar Adversários")
+    st.caption("Clique no nome do participante abaixo para ver os palpites dele.")
+    
+    usuarios_com_palpite = df_palpites[df_palpites["jogo"].str.startswith("Q")]["nome"].unique()
+    if len(usuarios_com_palpite) > 0:
+        for nome_participante in usuarios_com_palpite:
+            user_info = df_usuarios[df_usuarios["nome"] == nome_participante]
+            avatar_part = user_info["avatar"].values[0] if not user_info.empty else "👤"
+            
+            with st.expander(f"{avatar_part} {nome_participante}"):
+                palpites_do_cara = df_palpites[df_palpites["nome"] == nome_participante]
+                
+                for id_jogo, j in dict_jogos.items():
+                    p_jogo = palpites_do_cara[palpites_do_cara["jogo"] == id_jogo]
+                    f1 = bandeiras_emoji.get(j["time1"], "⚽")
+                    f2 = bandeiras_emoji.get(j["time2"], "⚽")
+                    
+                    if not p_jogo.empty:
+                        val_p1 = int(p_jogo.iloc[0]["p1"])
+                        val_p2 = int(p_jogo.iloc[0]["p2"])
+                        val_passa = p_jogo.iloc[0]["passa"]
+                        
+                        texto_linha = f"**{f1} {j['time1']} {val_p1} x {val_p2} {j['time2']} {f2}**"
+                        if val_p1 == val_p2 and val_passa:
+                            texto_linha += f" *(Pênaltis: {val_passa})*"
+                            
+                        st.markdown(texto_linha)
+    else:
+        st.info("Ninguém deu palpite ainda.")
 
 # ==================== PAGINA 2: PALPITAR ====================
 elif st.session_state.pagina == "✍️ Palpitar":
@@ -300,6 +333,8 @@ elif st.session_state.pagina == "✍️ Palpitar":
                         st.cache_data.clear()
                         st.balloons()
                         st.success("✅ Todos os seus palpites foram salvos com sucesso!")
+                        time.sleep(1.5) # Dá um tempinho para a pessoa ver que salvou
+                        st.rerun() # FORÇA A TELA A ATUALIZAR E MOSTRAR LÁ EMBAIXO NA HORA!
                     except:
                         st.error("Erro técnico de conexão. Tente salvar novamente.")
         
@@ -322,10 +357,8 @@ elif st.session_state.pagina == "✍️ Palpitar":
                     val_p2 = int(p_row["p2"])
                     val_passa = p_row["passa"]
                     
-                    # Mostra de forma organizada na interface
                     st.markdown(f"**{f1} {j_info['time1']} {val_p1} x {val_p2} {j_info['time2']} {f2}**" + (f" *(Passa: {val_passa})*" if val_passa else ""))
                     
-                    # Constrói o texto do WhatsApp
                     texto_meus_palpites += f"{f1} {j_info['time1']} {val_p1} x {val_p2} {j_info['time2']} {f2}"
                     if val_p1 == val_p2 and val_passa:
                         texto_meus_palpites += f" (Pênaltis: {val_passa})"
