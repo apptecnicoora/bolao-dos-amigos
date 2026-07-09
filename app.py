@@ -22,8 +22,8 @@ st.markdown("""
         background-color: #161a22;
         border: 2px solid #009B3A;
         border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
+        padding: 12px;
+        margin-bottom: 10px;
         box-shadow: 0 0 10px rgba(0, 155, 58, 0.2);
     }
     
@@ -96,7 +96,57 @@ def jogo_ja_comecou(horario_str):
     except:
         return False
 
-# --- MENU DE NAVEGAÇÃO SUPERSTÁVEL ---
+# --- UTILITÁRIO DE TERMÔMETRO DAS APOSTAS ---
+def gerar_termometro(id_jogo, df_palpites, t1, t2):
+    palpites = df_palpites[df_palpites["jogo"] == id_jogo]
+    total = len(palpites)
+    if total == 0:
+        return f"<div class='termometro'>📊 Termômetro: Seja o primeiro a palpitar!</div>"
+    
+    v1, v2, emp = 0, 0, 0
+    for _, p in palpites.iterrows():
+        try:
+            g1, g2 = int(p["p1"]), int(p["p2"])
+            if g1 > g2: v1 += 1
+            elif g2 > g1: v2 += 1
+            else: emp += 1
+        except: pass
+        
+    pct1 = int((v1/total)*100)
+    pct2 = int((v2/total)*100)
+    pctE = int((emp/total)*100)
+    
+    return f"<div class='termometro'>📊 <b>Tendência do Grupo:</b> {t1} {pct1}% | Empate {pctE}% | {t2} {pct2}%</div>"
+
+bandeiras_emoji = {
+    "Canadá": "🇨🇦", "Marrocos": "🇲🇦", "Brasil": "🇧🇷", "Noruega": "🇳🇴",
+    "Portugal": "🇵🇹", "Espanha": "🇪🇸", "Paraguai": "🇵🇾", "França": "🇫🇷",
+    "México": "🇲🇽", "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "EUA": "🇺🇸", "Bélgica": "🇧🇪",
+    "Argentina": "🇦🇷", "Egito": "🇪🇬", "Suíça": "🇨🇭", "Colômbia": "🇨🇴"
+}
+
+cores_paises = {
+    "Canadá": "#FF0000", "Marrocos": "#C1272D", "Brasil": "#009B3A", "Noruega": "#BA0C2F",
+    "Portugal": "#FF0000", "Espanha": "#AA151B", "Paraguai": "#0038A8", "França": "#002395",
+    "México": "#006341", "Inglaterra": "#CF081F", "EUA": "#3C3B6E", "Bélgica": "#ED2939",
+    "Argentina": "#43A1D5", "Egito": "#CE1126", "Suíça": "#FF0000", "Colômbia": "#FCD116"
+}
+
+# Dicionário de jogos rápido para as quartas
+dict_jogos = {}
+df_q_jogos_all = df_jogos[df_jogos["id"].str.startswith("Q", na=False)]
+for _, row in df_q_jogos_all.iterrows():
+    dict_jogos[row["id"]] = {
+        "time1": row["time1"], "flag1": row["flag1"],
+        "time2": row["time2"], "flag2": row["flag2"],
+        "gols1": int(row.get("gols1", 0)) if pd.notna(row.get("gols1", 0)) else 0, 
+        "gols2": int(row.get("gols2", 0)) if pd.notna(row.get("gols2", 0)) else 0,
+        "passa": row.get("passa", ""), 
+        "encerrado": str(row.get("encerrado", "Não")) == "Sim",
+        "horário": row.get("horário", "Horário a definir")
+    }
+
+# --- MENU DE NAVEGAÇÃO ---
 if "pagina" not in st.session_state:
     st.session_state.pagina = "📊 Ranking"
 
@@ -114,14 +164,12 @@ st.divider()
 if st.session_state.pagina == "📊 Ranking":
     st.header("🏆 Classificação Geral")
     
-    # Imagem do topo em Base64 segura
     if os.path.exists("ronaldinho.gif"):
         with open("ronaldinho.gif", "rb") as f:
             st.markdown(f"<div style='text-align:center'><img src='data:image/gif;base64,{base64.b64encode(f.read()).decode()}' style='width:100%; border-radius:12px; border:2px solid #009B3A;'></div><br>", unsafe_allow_html=True)
     else:
         st.image("https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg", use_container_width=True)
 
-    # Lógica do Sorteio Instantâneo
     st.markdown("<div style='background-color:#161a22; padding:15px; border-radius:12px; border:1px solid #FFDF00; text-align:center;'>", unsafe_allow_html=True)
     st.subheader("🎲 Qual craque você é hoje?")
     if st.button("SORTEAR MEU JOGADOR"):
@@ -129,12 +177,8 @@ if st.session_state.pagina == "📊 Ranking":
         st.success(f"Você está com a energia de: **{random.choice(craques)}**!")
     st.markdown("</div><br>", unsafe_allow_html=True)
 
-    # Processamento do Ranking
     pontos_totais = {}
     cravadas_totais = {}
-    
-    df_q_jogos = df_jogos[df_jogos["id"].str.startswith("Q", na=False)]
-    dict_status_jogos = {row["id"]: row for _, row in df_q_jogos.iterrows()}
     
     for _, p in df_palpites.iterrows():
         if str(p["jogo"]).startswith("Q"):
@@ -142,8 +186,8 @@ if st.session_state.pagina == "📊 Ranking":
             pontos_totais[nome] = pontos_totais.get(nome, 0)
             cravadas_totais[nome] = cravadas_totais.get(nome, 0)
             
-            jogo = dict_status_jogos.get(p["jogo"])
-            if jogo is not None and str(jogo["encerrado"]) == "Sim":
+            jogo = dict_jogos.get(p["jogo"])
+            if jogo is not None and jogo["encerrado"]:
                 if int(p["p1"]) == int(jogo["gols1"]) and int(p["p2"]) == int(jogo["gols2"]):
                     pontos_totais[nome] += 5
                     cravadas_totais[nome] += 1
@@ -175,7 +219,6 @@ elif st.session_state.pagina == "✍️ Palpitar":
     if nome_input:
         st.session_state.nome_usuario = nome_input
         
-        # Garante o cadastro do usuário de forma leve (CORRIGIDO)
         if nome_input not in df_usuarios["nome"].values:
             novo_u = pd.DataFrame([{"nome": nome_input, "avatar": "⚽"}])
             df_usuarios = pd.concat([df_usuarios, novo_u], ignore_index=True)
@@ -185,27 +228,42 @@ elif st.session_state.pagina == "✍️ Palpitar":
         
         # --- FORMULÁRIO ÚNICO EM BLOCK ---
         with st.form(key="formulario_global_quartas"):
-            st.markdown("<p style='color:#FFDF00;'>Preencha todos os jogos abaixo e clique em Salvar no final da página:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#FFDF00; text-align:center; font-weight:bold;'>Preencha todos os jogos e clique em 'SALVAR' no final da página:</p>", unsafe_allow_html=True)
             
             df_q_jogos = df_jogos[df_jogos["id"].str.startswith("Q", na=False)]
             dados_do_formulario = []
             
             for _, j in df_q_jogos.iterrows():
                 id_j = j["id"]
+                
                 st.markdown(f"""
                 <div class='card-jogo'>
-                    <div style='text-align:center; color:#FFDF00; font-weight:bold;'>📅 {j['horário']}</div>
-                    <h4 style='text-align:center; margin:5px 0;'>{j['time1']} x {j['time2']}</h4>
+                    <div style='text-align:center; color:#FFDF00; font-weight:bold; font-size:1.1rem;'>📅 {j['horário']}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Campos de entrada lado a lado
+                # Exibição de Bandeiras e Nomes usando colunas dentro do formulário
+                col_t1, col_vs, col_t2 = st.columns([2, 1, 2])
+                cor_t1 = cores_paises.get(j["time1"], "#009B3A")
+                cor_t2 = cores_paises.get(j["time2"], "#009B3A")
+                
+                with col_t1:
+                    st.markdown(f"<div style='text-align: right;'><img src='{j['flag1']}' width='55' style='border-radius: 4px; box-shadow: 0 0 8px {cor_t1};'><br><b>{j['time1']}</b></div>", unsafe_allow_html=True)
+                with col_vs:
+                    st.markdown("<h4 style='text-align: center; margin-top: 10px;'>VS</h4>", unsafe_allow_html=True)
+                with col_t2:
+                    st.markdown(f"<div style='text-align: left;'><img src='{j['flag2']}' width='55' style='border-radius: 4px; box-shadow: 0 0 8px {cor_t2};'><br><b>{j['time2']}</b></div>", unsafe_allow_html=True)
+                
+                # Termômetro de tendência do grupo
+                st.markdown(gerar_termometro(id_j, df_palpites, j["time1"], j["time2"]), unsafe_allow_html=True)
+                
+                # Inputs de placar
                 c1, c2 = st.columns(2)
                 with c1: g1 = st.number_input(f"Gols {j['time1']}", min_value=0, step=1, key=f"g1_{id_j}")
                 with c2: g2 = st.number_input(f"Gols {j['time2']}", min_value=0, step=1, key=f"g2_{id_j}")
                 
-                passa = st.selectbox(f"Quem se classifica em {j['time1']} x {j['time2']}?", ["Não empatou", j['time1'], j['time2']], key=f"passa_{id_j}")
-                st.markdown("<hr style='border:1px dashed #30363d'>", unsafe_allow_html=True)
+                passa = st.selectbox(f"Quem se classifica (Caso dê empate)?", ["Não empatou", j['time1'], j['time2']], key=f"passa_{id_j}")
+                st.markdown("<br><hr style='border:1px dashed #30363d'><br>", unsafe_allow_html=True)
                 
                 dados_do_formulario.append({"id": id_j, "g1": g1, "g2": g2, "passa": passa, "horario": j["horário"], "t1": j["time1"], "t2": j["time2"]})
             
@@ -217,12 +275,12 @@ elif st.session_state.pagina == "✍️ Palpitar":
                 
                 for item in dados_do_formulario:
                     if jogo_ja_comecou(item["horario"]):
-                        continue # Pula jogos que já iniciaram para proteger o sistema
+                        continue
                         
                     if item["g1"] == item["g2"] and item["passa"] == "Não empatou":
                         erros.append(f"Faltou escolher quem passa nos pênaltis em {item['t1']} x {item['t2']}!")
                     elif item["g1"] != item["g2"] and item["passa"] != "Não empatou":
-                        erros.append(f"O jogo {item['t1']} x {item['t2']} não terminou empatado, ajuste o campo de pênaltis.")
+                        erros.append(f"O jogo {item['t1']} x {item['t2']} não terminou empatado, ajuste o campo de classificação.")
                     else:
                         passa_final = item["passa"] if item["passa"] != "Não empatou" else ""
                         novos_palpites_lista.append({"nome": nome_input, "jogo": item["id"], "p1": int(item["g1"]), "p2": int(item["g2"]), "passa": passa_final})
@@ -230,24 +288,55 @@ elif st.session_state.pagina == "✍️ Palpitar":
                 if erros:
                     for err in erros: st.error(err)
                 else:
-                    # Gravação em lote unificada anti-wipe
                     try:
                         df_p_safe = conn.read(worksheet="Palpites", ttl=0)
                         if df_p_safe is None: df_p_safe = pd.DataFrame(columns=["nome", "jogo", "p1", "p2", "passa"])
-                        
-                        # Remove os registros antigos desse usuário para as quartas
                         df_p_safe = df_p_safe[~((df_p_safe["nome"] == nome_input) & (df_p_safe["jogo"].str.startswith("Q")))]
                         
-                        # Adiciona o bloco novo de uma vez só
                         df_novos = pd.DataFrame(novos_palpites_lista)
                         df_final = pd.concat([df_p_safe, df_novos], ignore_index=True)
                         
                         conn.update(worksheet="Palpites", data=df_final)
                         st.cache_data.clear()
                         st.balloons()
-                        st.success("✅ Todos os seus palpites foram salvos com sucesso! Campos limpos para o próximo.")
+                        st.success("✅ Todos os seus palpites foram salvos com sucesso!")
                     except:
-                        st.error("Erro técnico de gravação. Tente novamente.")
+                        st.error("Erro técnico de conexão. Tente salvar novamente.")
+        
+        # --- EXIBIÇÃO DOS PALPITES ATUAIS SALVOS + BLOCO WHATSAPP ---
+        st.divider()
+        df_meus_palpites = df_palpites[(df_palpites["nome"] == nome_input) & (df_palpites["jogo"].str.startswith("Q"))]
+        
+        if not df_meus_palpites.empty:
+            st.subheader("📋 Seus Resultados Escolhidos")
+            
+            texto_meus_palpites = f"📝 *MEUS PALPITES - QUARTAS* 📝\n"
+            texto_meus_palpites += f"👤 *Participante:* {nome_input}\n\n"
+            
+            for _, p_row in df_meus_palpites.iterrows():
+                j_info = dict_jogos.get(p_row["jogo"])
+                if j_info:
+                    f1 = bandeiras_emoji.get(j_info["time1"], "⚽")
+                    f2 = bandeiras_emoji.get(j_info["time2"], "⚽")
+                    val_p1 = int(p_row["p1"])
+                    val_p2 = int(p_row["p2"])
+                    val_passa = p_row["passa"]
+                    
+                    # Mostra de forma organizada na interface
+                    st.markdown(f"**{f1} {j_info['time1']} {val_p1} x {val_p2} {j_info['time2']} {f2}**" + (f" *(Passa: {val_passa})*" if val_passa else ""))
+                    
+                    # Constrói o texto do WhatsApp
+                    texto_meus_palpites += f"{f1} {j_info['time1']} {val_p1} x {val_p2} {j_info['time2']} {f2}"
+                    if val_p1 == val_p2 and val_passa:
+                        texto_meus_palpites += f" (Pênaltis: {val_passa})"
+                    texto_meus_palpites += "\n"
+            
+            texto_meus_palpites += "\n👉 *Faça seus palpites também pelo link!*"
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📲 Copiar Texto para o WhatsApp")
+            st.caption("Clique no botão de copiar no canto direito do bloco abaixo:")
+            st.code(texto_meus_palpites, language="text")
     else:
         st.info("Identifique-se inserindo seu nome no topo para liberar a tela de palpites.")
 
