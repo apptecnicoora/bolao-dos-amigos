@@ -121,7 +121,7 @@ if st.session_state.pagina == "📊 Ranking":
     else:
         st.image("https://upload.wikimedia.org/wikipedia/commons/e/e0/Ronaldinho_11022007.jpg", use_container_width=True)
 
-    # Lógica do Sorteio Instantâneo (Sem APIs externas para não quebrar)
+    # Lógica do Sorteio Instantâneo
     st.markdown("<div style='background-color:#161a22; padding:15px; border-radius:12px; border:1px solid #FFDF00; text-align:center;'>", unsafe_allow_html=True)
     st.subheader("🎲 Qual craque você é hoje?")
     if st.button("SORTEAR MEU JOGADOR"):
@@ -175,8 +175,8 @@ elif st.session_state.pagina == "✍️ Palpitar":
     if nome_input:
         st.session_state.nome_usuario = nome_input
         
-        # Garante o cadastro do usuário de forma leve
-        if nome_input betting_not_in_db := (nome_input not in df_usuarios["nome"].values):
+        # Garante o cadastro do usuário de forma leve (CORRIGIDO)
+        if nome_input not in df_usuarios["nome"].values:
             novo_u = pd.DataFrame([{"nome": nome_input, "avatar": "⚽"}])
             df_usuarios = pd.concat([df_usuarios, novo_u], ignore_index=True)
             conn.update(worksheet="Usuarios", data=df_usuarios)
